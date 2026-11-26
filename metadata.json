@@ -1,0 +1,6 @@
+{
+  "name": "遗迹剑影：森林遗迹",
+  "description": "暗黑童话风横版动作冒险游戏《遗迹剑影》第一关：森林遗迹，支持自定义美术素材工坊与多层材质化怪物受击特效。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

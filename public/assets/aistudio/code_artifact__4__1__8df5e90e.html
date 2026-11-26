@@ -1,0 +1,3842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>《遗迹剑影》第一关：森林遗迹（完整可游玩版）</title>
+  <style>
+    :root {
+      --bg-page: #0b1015;
+      --bar-bg: #111820;
+      --panel-bg: #141d26;
+      --border-gold: rgba(206, 174, 114, 0.42);
+      --gold: #e6c687;
+      --cyan: #67e8f9;
+      --text: #e2edf0;
+      --muted: #8ea5ad;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background: radial-gradient(circle at 50% 18%, #15232d 0%, var(--bg-page) 72%);
+      color: var(--text);
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 14px 20px;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow-x: hidden;
+    }
+
+    /* 顶部独立工具栏 */
+    .toolbar {
+      width: 100%;
+      max-width: 960px;
+      background: var(--bar-bg);
+      border: 1px solid var(--border-gold);
+      border-radius: 12px;
+      padding: 9px 14px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .controls-hint {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .kbd {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 5px;
+      background: #1b2a36;
+      border: 1px solid rgba(230, 198, 135, 0.4);
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 700;
+      margin: 0 2px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: linear-gradient(180deg, #1b2c38, #121e27);
+      color: var(--text);
+      border: 1px solid var(--border-gold);
+      border-radius: 8px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      border-color: var(--gold);
+      background: linear-gradient(180deg, #233947, #162632);
+      transform: translateY(-1px);
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    .btn-accent {
+      border-color: rgba(103, 232, 249, 0.55);
+      color: #cffafe;
+    }
+
+    .btn-boss {
+      border-color: rgba(251, 191, 36, 0.55);
+      color: #fef3c7;
+    }
+
+    /* 主画布舞台容器 */
+    .stage-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 960 / 540;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1.5px solid var(--border-gold);
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(103, 232, 249, 0.08);
+      background: #060b10;
+    }
+
+    canvas#gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* 画布顶部居中提示吐司 */
+    .toast {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: rgba(10, 22, 30, 0.88);
+      border: 1px solid rgba(230, 198, 135, 0.65);
+      color: #fef3c7;
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 20;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* 结算 / 阵亡浮层 */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 10, 15, 0.78);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 25;
+      padding: 16px;
+    }
+
+    .overlay.show { display: flex; }
+
+    .modal-card {
+      width: 100%;
+      max-width: 420px;
+      background: linear-gradient(180deg, #16242e, #0e1820);
+      border: 1.5px solid var(--gold);
+      border-radius: 16px;
+      padding: 24px 26px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .modal-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    .modal-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: rgba(8, 16, 22, 0.75);
+      border: 1px solid rgba(206, 174, 114, 0.28);
+      border-radius: 10px;
+      padding: 10px 6px;
+    }
+
+    .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .stat-val { font-size: 18px; font-weight: 800; color: #f8fafc; }
+
+    .rank-badge {
+      display: inline-block;
+      font-size: 38px;
+      font-weight: 900;
+      color: #fde047;
+      text-shadow: 0 0 18px rgba(250, 204, 21, 0.55);
+      margin-bottom: 12px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .modal-actions .btn {
+      padding: 9px 18px;
+      font-size: 13px;
+    }
+
+    /* 可折叠美术素材工坊 */
+    .asset-panel {
+      width: 100%;
+      max-width: 960px;
+      margin-top: 12px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-gold);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: none;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .asset-panel.open { display: block; }
+
+    .asset-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(206, 174, 114, 0.2);
+    }
+
+    .asset-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .asset-options {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .asset-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    .asset-options select {
+      background: #0d161e;
+      color: var(--text);
+      border: 1px solid var(--border-gold);
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-size: 12px;
+    }
+
+    .asset-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .asset-tab {
+      background: #0f1922;
+      color: var(--muted);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .asset-tab.active {
+      background: #1c3140;
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 10px;
+    }
+
+    .asset-card {
+      background: #0e161e;
+      border: 1px dashed rgba(206, 174, 114, 0.35);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .asset-card.loaded {
+      border-style: solid;
+      border-color: rgba(103, 232, 249, 0.65);
+    }
+
+    .asset-card.dragover {
+      border-color: #fde047;
+      background: #172734;
+    }
+
+    .asset-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .asset-card-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .asset-card-tag {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(103, 232, 249, 0.14);
+      color: var(--cyan);
+      white-space: nowrap;
+    }
+
+    .asset-preview-box {
+      height: 74px;
+      background: repeating-conic-gradient(#131e28 0% 25%, #0c141b 0% 50%) 50% / 14px 14px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .asset-preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .asset-preview-placeholder {
+      font-size: 11px;
+      color: #6b8490;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .asset-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .asset-status-text {
+      font-size: 10.5px;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .asset-clear-btn {
+      background: transparent;
+      color: #fca5a5;
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: 10.5px;
+      cursor: pointer;
+    }
+
+    .asset-clear-btn:hover { background: rgba(248, 113, 113, 0.14); }
+
+    /* 移动端简易触控条 */
+    .touch-bar {
+      width: 100%;
+      max-width: 960px;
+      margin-top: 10px;
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .touch-group { display: flex; gap: 8px; }
+
+    .t-btn {
+      min-width: 52px;
+      height: 48px;
+      padding: 0 12px;
+      border-radius: 12px;
+      background: #14222c;
+      border: 1px solid var(--border-gold);
+      color: var(--gold);
+      font-size: 14px;
+      font-weight: 700;
+      touch-action: none;
+    }
+
+    .t-btn:active { background: #233c4d; color: #fff; }
+
+    @media (hover: none) and (pointer: coarse), (max-width: 720px) {
+      .touch-bar { display: flex; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部工具栏 -->
+  <div class="toolbar">
+    <div class="controls-hint">
+      <span><span class="kbd">A</span>/<span class="kbd">D</span> 移动</span>｜
+      <span><span class="kbd">W</span>/<span class="kbd">Space</span> 跳跃</span>｜
+      <span><span class="kbd">左键</span>/<span class="kbd">J</span> 攻击/弹反光弹</span>｜
+      <span><span class="kbd">Shift</span>/<span class="kbd">右键</span>/<span class="kbd">L</span> 冲刺</span>｜
+      <span><span class="kbd">S</span>+<span class="kbd">跳</span> 下穿铁台</span>
+    </div>
+    <div class="toolbar-actions">
+      <button id="btnSound" class="btn" type="button">🔊 音效：开</button>
+      <button id="btnAssets" class="btn btn-accent" type="button">🎨 美术素材</button>
+      <button id="btnBossWarp" class="btn btn-boss" type="button">🔔 直达Boss房</button>
+      <button id="btnRestart" class="btn" type="button">🔄 重开本关</button>
+    </div>
+  </div>
+
+  <!-- 游戏主舞台 -->
+  <div class="stage-wrap">
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+    <div id="toast" class="toast"></div>
+
+    <!-- 结算 / 阵亡弹窗 -->
+    <div id="overlay" class="overlay">
+      <div class="modal-card">
+        <div id="modalRank" class="rank-badge">S</div>
+        <div id="modalTitle" class="modal-title">遗迹通关</div>
+        <div id="modalSub" class="modal-sub">朽钟守林巨像已倒下，森林遗迹的封印解除。</div>
+        <div class="modal-stats">
+          <div class="stat-box">
+            <div class="stat-label">收集金币</div>
+            <div id="statGold" class="stat-val">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">剩余血量</div>
+            <div id="statHp" class="stat-val">100</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">通关耗时</div>
+            <div id="statTime" class="stat-val">0s</div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="btnModalPrimary" class="btn btn-accent" type="button">再次挑战</button>
+          <button id="btnModalBoss" class="btn btn-boss" type="button">直达Boss房</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 触屏快捷按钮 -->
+  <div class="touch-bar">
+    <div class="touch-group">
+      <button id="tLeft" class="t-btn" type="button">◀</button>
+      <button id="tRight" class="t-btn" type="button">▶</button>
+      <button id="tDown" class="t-btn" type="button">▼</button>
+    </div>
+    <div class="touch-group">
+      <button id="tJump" class="t-btn" type="button">跳</button>
+      <button id="tDash" class="t-btn" type="button">冲刺</button>
+      <button id="tAtk" class="t-btn" type="button">斩击</button>
+    </div>
+  </div>
+
+  <!-- 可折叠美术素材工坊 -->
+  <div id="assetPanel" class="asset-panel">
+    <div class="asset-header">
+      <div class="asset-title">🎨 美术素材工坊（支持点击选图或直接拖拽 PNG/JPG · 自动智能去背与闪白烘焙）</div>
+      <div class="asset-options">
+        <label><input id="optAutoKey" type="checkbox" checked /> 智能边缘去背</label>
+        <label>
+          去背容差
+          <input id="optTolerance" type="range" min="10" max="85" value="36" style="width:84px;" />
+          <span id="optTolVal">36</span>
+        </label>
+        <label>
+          动作表网格
+          <select id="optGrid">
+            <option value="2x5" selected>2行 × 5列 (10帧)</option>
+            <option value="2x4">2行 × 4列 (8帧)</option>
+            <option value="1x4">1行 × 4列 (4帧)</option>
+          </select>
+        </label>
+        <button id="btnClearAllAssets" class="btn" type="button">恢复全部默认手绘</button>
+      </div>
+    </div>
+
+    <div class="asset-tabs" role="tablist">
+      <button type="button" class="asset-tab active" data-tab="player">主角动作帧 (4)</button>
+      <button type="button" class="asset-tab" data-tab="monsters">三种怪物动作帧 (6)</button>
+      <button type="button" class="asset-tab" data-tab="env">背景与地形台阶 (9)</button>
+      <button type="button" class="asset-tab" data-tab="props">交互物、门与补给 (6)</button>
+    </div>
+
+    <div id="assetGrid" class="asset-grid"></div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* ============================================================
+         1. 常量与缓动工具
+         ============================================================ */
+      const VIEW_W = 960;
+      const VIEW_H = 540;
+      const FLOOR_Y = 440;
+      const WORLD_W = 7060;
+      const BOSS_ARENA_LEFT = 6020;
+      const BOSS_ARENA_RIGHT = 6990;
+      const BOSS_TRIGGER_X = 6135;
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const rectsOverlap = (a, b) =>
+        a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+      const Easing = {
+        easeOutQuad: (t) => 1 - (1 - t) * (1 - t),
+        easeInQuad: (t) => t * t,
+        easeOutCubic: (t) => 1 - Math.pow(1 - t, 3),
+        easeInCubic: (t) => t * t * t,
+        easeOutExpo: (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t))
+      };
+
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const toastEl = document.getElementById('toast');
+      let toastTimer = null;
+
+      function showToast(msg, duration = 2200) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('show');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove('show'), duration);
+      }
+
+      /* ============================================================
+         2. Web Audio 低/中/高频实时合成音效引擎
+         ============================================================ */
+      const AudioSys = {
+        ctx: null,
+        master: null,
+        noiseBuf: null,
+        enabled: true,
+
+        unlock() {
+          if (!this.enabled) return;
+          try {
+            if (!this.ctx) {
+              const AC = window.AudioContext || window.webkitAudioContext;
+              if (!AC) return;
+              this.ctx = new AC();
+              const comp = this.ctx.createDynamicsCompressor();
+              comp.threshold.value = -14;
+              comp.ratio.value = 6;
+              this.master = this.ctx.createGain();
+              this.master.gain.value = 0.72;
+              this.master.connect(comp);
+              comp.connect(this.ctx.destination);
+
+              const len = Math.floor(this.ctx.sampleRate * 0.6);
+              this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+              const d = this.noiseBuf.getChannelData(0);
+              for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+            }
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+          } catch (_) {}
+        },
+
+        ready() {
+          if (!this.enabled || !this.ctx || !this.master || !this.noiseBuf) return false;
+          if (this.ctx.state === 'suspended') {
+            try { this.ctx.resume(); } catch (_) {}
+          }
+          return true;
+        },
+
+        // 高频：剑划破风声
+        playSlash(step) {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          const src = c.createBufferSource();
+          src.buffer = this.noiseBuf;
+          const bp = c.createBiquadFilter();
+          bp.type = 'bandpass';
+          bp.Q.value = step === 3 ? 1.8 : 2.6;
+          const f0 = step === 1 ? 1750 : (step === 2 ? 2200 : 1200);
+          const f1 = step === 1 ? 460 : (step === 2 ? 620 : 240);
+          const dur = step === 3 ? 0.22 : 0.13;
+          bp.frequency.setValueAtTime(f0, now);
+          bp.frequency.exponentialRampToValueAtTime(f1, now + dur);
+
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.001, now);
+          g.gain.linearRampToValueAtTime(step === 3 ? 0.42 : 0.26, now + 0.018);
+          g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+          src.connect(bp); bp.connect(g); g.connect(this.master);
+          src.start(now); src.stop(now + dur + 0.02);
+        },
+
+        // 中频碎裂 + 低频重击
+        playHit(isHeavy, mat = 'stone') {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          // 低频重击
+          const osc = c.createOscillator();
+          osc.type = isHeavy ? 'sawtooth' : 'triangle';
+          osc.frequency.setValueAtTime(isHeavy ? 155 : 190, now);
+          osc.frequency.exponentialRampToValueAtTime(isHeavy ? 34 : 58, now + (isHeavy ? 0.24 : 0.12));
+          const lp = c.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.value = isHeavy ? 320 : 480;
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.001, now);
+          g.gain.linearRampToValueAtTime(isHeavy ? 0.56 : 0.34, now + 0.006);
+          g.gain.exponentialRampToValueAtTime(0.001, now + (isHeavy ? 0.26 : 0.14));
+          osc.connect(lp); lp.connect(g); g.connect(this.master);
+          osc.start(now); osc.stop(now + 0.28);
+
+          // 中频碎裂
+          const pulses = isHeavy ? 4 : 2;
+          for (let i = 0; i < pulses; i++) {
+            const t = now + i * 0.022;
+            const src = c.createBufferSource();
+            src.buffer = this.noiseBuf;
+            const bp = c.createBiquadFilter();
+            bp.type = 'bandpass';
+            bp.Q.value = mat === 'wood' ? 1.8 : 3.2;
+            bp.frequency.value = (mat === 'wood' ? 880 : 1450) + Math.random() * 550;
+            const ng = c.createGain();
+            ng.gain.setValueAtTime(0.001, t);
+            ng.gain.linearRampToValueAtTime((isHeavy ? 0.28 : 0.18) / (1 + i * 0.3), t + 0.004);
+            ng.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+            src.connect(bp); bp.connect(ng); ng.connect(this.master);
+            src.start(t); src.stop(t + 0.09);
+          }
+        },
+
+        playJump() {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          const osc = c.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(210, now);
+          osc.frequency.exponentialRampToValueAtTime(420, now + 0.09);
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.001, now);
+          g.gain.linearRampToValueAtTime(0.14, now + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+          osc.connect(g); g.connect(this.master);
+          osc.start(now); osc.stop(now + 0.12);
+        },
+
+        playDash() {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          const src = c.createBufferSource();
+          src.buffer = this.noiseBuf;
+          const bp = c.createBiquadFilter();
+          bp.type = 'bandpass';
+          bp.Q.value = 1.6;
+          bp.frequency.setValueAtTime(1600, now);
+          bp.frequency.exponentialRampToValueAtTime(320, now + 0.16);
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.001, now);
+          g.gain.linearRampToValueAtTime(0.28, now + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+          src.connect(bp); bp.connect(g); g.connect(this.master);
+          src.start(now); src.stop(now + 0.18);
+        },
+
+        playHurt() {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          const osc = c.createOscillator();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(190, now);
+          osc.frequency.exponentialRampToValueAtTime(62, now + 0.22);
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.32, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+          osc.connect(g); g.connect(this.master);
+          osc.start(now); osc.stop(now + 0.25);
+        },
+
+        playCoin(comboIdx = 0) {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          const base = 780 * Math.pow(1.06, Math.min(comboIdx, 12));
+          [base, base * 1.5].forEach((freq, i) => {
+            const osc = c.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.025);
+            const g = c.createGain();
+            g.gain.setValueAtTime(0.001, now + i * 0.025);
+            g.gain.linearRampToValueAtTime(0.14 / (i + 1), now + i * 0.025 + 0.008);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.025 + 0.18);
+            osc.connect(g); g.connect(this.master);
+            osc.start(now + i * 0.025); osc.stop(now + i * 0.025 + 0.2);
+          });
+        },
+
+        playHeal() {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          [523.25, 659.25, 783.99].forEach((f, i) => {
+            const osc = c.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + i * 0.04);
+            const g = c.createGain();
+            g.gain.setValueAtTime(0.001, now + i * 0.04);
+            g.gain.linearRampToValueAtTime(0.09, now + i * 0.04 + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.25);
+            osc.connect(g); g.connect(this.master);
+            osc.start(now + i * 0.04); osc.stop(now + i * 0.04 + 0.26);
+          });
+        },
+
+        playHeartbeat() {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          [0, 0.18].forEach((off, idx) => {
+            const osc = c.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(idx === 0 ? 72 : 58, now + off);
+            osc.frequency.exponentialRampToValueAtTime(32, now + off + 0.12);
+            const g = c.createGain();
+            g.gain.setValueAtTime(0.001, now + off);
+            g.gain.linearRampToValueAtTime(idx === 0 ? 0.22 : 0.15, now + off + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.001, now + off + 0.14);
+            osc.connect(g); g.connect(this.master);
+            osc.start(now + off); osc.stop(now + off + 0.16);
+          });
+        },
+
+        playBossBell() {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          [165, 248, 392, 520].forEach((f, i) => {
+            const osc = c.createOscillator();
+            osc.type = i === 0 ? 'triangle' : 'sine';
+            osc.frequency.setValueAtTime(f, now);
+            const g = c.createGain();
+            g.gain.setValueAtTime(0.001, now);
+            g.gain.linearRampToValueAtTime(0.24 / (i + 1), now + 0.015);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 1.3 - i * 0.2);
+            osc.connect(g); g.connect(this.master);
+            osc.start(now); osc.stop(now + 1.35);
+          });
+        },
+
+        playBossSlam() {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          const osc = c.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(110, now);
+          osc.frequency.exponentialRampToValueAtTime(24, now + 0.42);
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.001, now);
+          g.gain.linearRampToValueAtTime(0.62, now + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+          osc.connect(g); g.connect(this.master);
+          osc.start(now); osc.stop(now + 0.48);
+          this.playHit(true, 'stone');
+        },
+
+        playParry() {
+          if (!this.ready()) return;
+          const c = this.ctx, now = c.currentTime;
+          [1180, 1770, 2640].forEach((freq, i) => {
+            const osc = c.createOscillator();
+            osc.type = i === 0 ? 'triangle' : 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.18, now + 0.06);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.96, now + 0.24);
+            const g = c.createGain();
+            g.gain.setValueAtTime(0.001, now);
+            g.gain.linearRampToValueAtTime(0.26 / (i + 1), now + 0.004);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.25 - i * 0.04);
+            osc.connect(g); g.connect(this.master);
+            osc.start(now); osc.stop(now + 0.27);
+          });
+          const src = c.createBufferSource();
+          src.buffer = this.noiseBuf;
+          const bp = c.createBiquadFilter();
+          bp.type = 'bandpass';
+          bp.Q.value = 3.0;
+          bp.frequency.setValueAtTime(3400, now);
+          bp.frequency.exponentialRampToValueAtTime(1400, now + 0.09);
+          const ng = c.createGain();
+          ng.gain.setValueAtTime(0.001, now);
+          ng.gain.linearRampToValueAtTime(0.32, now + 0.003);
+          ng.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+          src.connect(bp); bp.connect(ng); ng.connect(this.master);
+          src.start(now); src.stop(now + 0.11);
+        }
+      };
+
+      /* ============================================================
+         3. 美术素材工坊（24 槽位 + BFS 智能边缘去背 + 自动切帧）
+         ============================================================ */
+      const ASSET_SLOTS = [
+        // 主角动作帧 (4)
+        { key: 'player_idle',   tab: 'player',   name: '主角 · 待机',           tag: '动作表', kind: 'sheet' },
+        { key: 'player_run',    tab: 'player',   name: '主角 · 行走',           tag: '动作表', kind: 'sheet' },
+        { key: 'player_attack', tab: 'player',   name: '主角 · 攻击',           tag: '动作表', kind: 'sheet' },
+        { key: 'player_dash',   tab: 'player',   name: '主角 · 冲刺剪影(可选)', tag: '单图',   kind: 'single' },
+        // 三种怪物动作帧 (6)
+        { key: 'beetle_walk',   tab: 'monsters', name: '苔石甲虫 · 行走',       tag: '动作表', kind: 'sheet' },
+        { key: 'beetle_attack', tab: 'monsters', name: '苔石甲虫 · 冲撞',       tag: '动作表', kind: 'sheet' },
+        { key: 'wisp_walk',     tab: 'monsters', name: '残铃浮灵 · 悬浮',       tag: '动作表', kind: 'sheet' },
+        { key: 'wisp_attack',   tab: 'monsters', name: '残铃浮灵 · 攻击',       tag: '动作表', kind: 'sheet' },
+        { key: 'boss_walk',     tab: 'monsters', name: '朽钟巨像 · 重步',       tag: '动作表', kind: 'sheet' },
+        { key: 'boss_attack',   tab: 'monsters', name: '朽钟巨像 · 攻击',       tag: '动作表', kind: 'sheet' },
+        // 背景与地形台阶 (9)
+        { key: 'bg_forest',       tab: 'env',    name: '森林遗迹 · 游戏背景',   tag: '背景图', kind: 'bg' },
+        { key: 'tile_sheet_2x3',  tab: 'env',    name: '一键导入 2×3 台阶合集', tag: '自动切6', kind: 'batch_tiles' },
+        { key: 'tile_ground',     tab: 'env',    name: '基础平地（主干道）',     tag: '平铺',   kind: 'single' },
+        { key: 'tile_solid',      tab: 'env',    name: '实心台阶（独立高台）',   tag: '台阶',   kind: 'single' },
+        { key: 'tile_stair',      tab: 'env',    name: '楼梯台阶（四级石阶）',   tag: '石阶',   kind: 'single' },
+        { key: 'tile_suspend',    tab: 'env',    name: '悬浮跳台',               tag: '跳台',   kind: 'single' },
+        { key: 'tile_oneway',     tab: 'env',    name: '单向铁艺踏板',           tag: '单向板', kind: 'single' },
+        { key: 'tile_fragile',    tab: 'env',    name: '易碎再生地块',           tag: '易碎台', kind: 'single' },
+        { key: 'tile_shrine',     tab: 'env',    name: '回血祭坛石台',           tag: '祭坛',   kind: 'single' },
+        // 交互物、门与补给 (6)
+        { key: 'prop_crate',       tab: 'props', name: '可推/击碎木箱',          tag: '交互物', kind: 'single' },
+        { key: 'prop_pot',         tab: 'props', name: '遗迹石罐子',             tag: '交互物', kind: 'single' },
+        { key: 'prop_fruit',       tab: 'props', name: '回血果实（孢子果）',     tag: '补给',   kind: 'single' },
+        { key: 'gate_boss',        tab: 'props', name: 'Boss 战砸落石门',        tag: '机关门', kind: 'single' },
+        { key: 'gate_exit_closed', tab: 'props', name: '通关之门（封锁态）',     tag: '关底门', kind: 'single' },
+        { key: 'gate_exit_open',   tab: 'props', name: '通关之门（开启态）',     tag: '关底门', kind: 'single' }
+      ];
+
+      const AssetManager = {
+        activeTab: 'player',
+        autoKey: true,
+        tolerance: 36,
+        grid: '2x5',
+        rawImages: {},
+        assets: {},
+
+        get(key) {
+          return this.assets[key] || null;
+        },
+
+        // 外边界 BFS 洪水填充智能去背（保护角色眼睛、斗篷高光与孢子花内部白色）
+        keyOutBackground(srcCanvas) {
+          const w = srcCanvas.width;
+          const h = srcCanvas.height;
+          if (!this.autoKey || w === 0 || h === 0) return srcCanvas;
+
+          const out = document.createElement('canvas');
+          out.width = w;
+          out.height = h;
+          const octx = out.getContext('2d');
+          octx.drawImage(srcCanvas, 0, 0);
+          const imgData = octx.getImageData(0, 0, w, h);
+          const d = imgData.data;
+
+          // 若图片本身已包含明显透明像素，直接保留原透明通道
+          let transparentCorners = 0;
+          const cornerIdx = [0, (w - 1) * 4, (h - 1) * w * 4, ((h - 1) * w + (w - 1)) * 4];
+          for (const ci of cornerIdx) {
+            if (d[ci + 3] < 20) transparentCorners++;
+          }
+          if (transparentCorners >= 2) return out;
+
+          // 采样四角均值作为背景基准色
+          let bgR = 0, bgG = 0, bgB = 0;
+          for (const ci of cornerIdx) {
+            bgR += d[ci];
+            bgG += d[ci + 1];
+            bgB += d[ci + 2];
+          }
+          bgR /= 4; bgG /= 4; bgB /= 4;
+
+          const tolSq = this.tolerance * this.tolerance * 3;
+          const visited = new Uint8Array(w * h);
+          const queue = new Int32Array(w * h);
+          let head = 0, tail = 0;
+
+          const tryPush = (x, y) => {
+            const p = y * w + x;
+            if (visited[p]) return;
+            const i = p * 4;
+            if (d[i + 3] < 10) {
+              visited[p] = 1;
+              queue[tail++] = p;
+              return;
+            }
+            const dr = d[i] - bgR;
+            const dg = d[i + 1] - bgG;
+            const db = d[i + 2] - bgB;
+            if (dr * dr + dg * dg + db * db <= tolSq) {
+              visited[p] = 1;
+              queue[tail++] = p;
+            }
+          };
+
+          for (let x = 0; x < w; x++) { tryPush(x, 0); tryPush(x, h - 1); }
+          for (let y = 0; y < h; y++) { tryPush(0, y); tryPush(w - 1, y); }
+
+          while (head < tail) {
+            const p = queue[head++];
+            d[p * 4 + 3] = 0;
+            const x = p % w;
+            const y = (p - x) / w;
+            if (x > 0) tryPush(x - 1, y);
+            if (x < w - 1) tryPush(x + 1, y);
+            if (y > 0) tryPush(x, y - 1);
+            if (y < h - 1) tryPush(x, y + 1);
+          }
+
+          // 1px 边缘柔和抗锯齿去白/去灰边
+          const softSq = tolSq * 2.1;
+          for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+              const p = y * w + x;
+              if (visited[p]) continue;
+              if (visited[p - 1] || visited[p + 1] || visited[p - w] || visited[p + w]) {
+                const i = p * 4;
+                const dr = d[i] - bgR;
+                const dg = d[i + 1] - bgG;
+                const db = d[i + 2] - bgB;
+                if (dr * dr + dg * dg + db * db <= softSq) {
+                  d[i + 3] = Math.round(d[i + 3] * 0.35);
+                }
+              }
+            }
+          }
+
+          octx.putImageData(imgData, 0, 0);
+          return out;
+        },
+
+        // 裁切透明边距（让每帧脚底精准贴地）
+        trimCanvas(srcCanvas) {
+          const w = srcCanvas.width;
+          const h = srcCanvas.height;
+          const sctx = srcCanvas.getContext('2d');
+          const d = sctx.getImageData(0, 0, w, h).data;
+          let minX = w, minY = h, maxX = -1, maxY = -1;
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              if (d[(y * w + x) * 4 + 3] > 24) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+          if (maxX < minX || maxY < minY) return null;
+          const cw = maxX - minX + 1;
+          const ch = maxY - minY + 1;
+          const out = document.createElement('canvas');
+          out.width = cw;
+          out.height = ch;
+          out.getContext('2d').drawImage(srcCanvas, minX, minY, cw, ch, 0, 0, cw, ch);
+          return out;
+        },
+
+        // 预烘焙纯白剪影（用于受击闪白与主角纯白冲刺拖尾）
+        createWhiteCanvas(srcCanvas) {
+          const out = document.createElement('canvas');
+          out.width = srcCanvas.width;
+          out.height = srcCanvas.height;
+          const octx = out.getContext('2d');
+          octx.drawImage(srcCanvas, 0, 0);
+          octx.globalCompositeOperation = 'source-in';
+          octx.fillStyle = '#ffffff';
+          octx.fillRect(0, 0, out.width, out.height);
+          return out;
+        },
+
+        processSlot(slot, img) {
+          const base = document.createElement('canvas');
+          base.width = img.naturalWidth || img.width;
+          base.height = img.naturalHeight || img.height;
+          base.getContext('2d').drawImage(img, 0, 0);
+
+          if (slot.kind === 'bg') {
+            this.assets[slot.key] = {
+              canvas: base,
+              w: base.width,
+              h: base.height,
+              previewUrl: base.toDataURL('image/png')
+            };
+            return;
+          }
+
+          if (slot.kind === 'batch_tiles') {
+            const cleaned = this.keyOutBackground(base);
+            const targetKeys = ['tile_ground', 'tile_suspend', 'tile_stair', 'tile_oneway', 'tile_fragile', 'tile_shrine'];
+            const cellW = Math.floor(cleaned.width / 3);
+            const cellH = Math.floor(cleaned.height / 2);
+            let filled = 0;
+            for (let r = 0; r < 2; r++) {
+              for (let c = 0; c < 3; c++) {
+                const sub = document.createElement('canvas');
+                sub.width = cellW;
+                sub.height = cellH;
+                sub.getContext('2d').drawImage(cleaned, c * cellW, r * cellH, cellW, cellH, 0, 0, cellW, cellH);
+                const trimmed = this.trimCanvas(sub) || sub;
+                const tKey = targetKeys[r * 3 + c];
+                this.assets[tKey] = {
+                  canvas: trimmed,
+                  white: this.createWhiteCanvas(trimmed),
+                  w: trimmed.width,
+                  h: trimmed.height,
+                  previewUrl: trimmed.toDataURL('image/png')
+                };
+                filled++;
+              }
+            }
+            this.assets[slot.key] = {
+              canvas: cleaned,
+              w: cleaned.width,
+              h: cleaned.height,
+              previewUrl: cleaned.toDataURL('image/png'),
+              status: `已切分填入 ${filled} 类台阶`
+            };
+            return;
+          }
+
+          if (slot.kind === 'single') {
+            const cleaned = this.keyOutBackground(base);
+            const trimmed = this.trimCanvas(cleaned) || cleaned;
+            this.assets[slot.key] = {
+              canvas: trimmed,
+              white: this.createWhiteCanvas(trimmed),
+              w: trimmed.width,
+              h: trimmed.height,
+              previewUrl: trimmed.toDataURL('image/png')
+            };
+            return;
+          }
+
+          // 动作表切帧（2x5 / 2x4 / 1x4）
+          const [rows, cols] = this.grid.split('x').map(Number);
+          const cleaned = this.keyOutBackground(base);
+          const cellW = Math.floor(cleaned.width / cols);
+          const cellH = Math.floor(cleaned.height / rows);
+          const frames = [];
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const sub = document.createElement('canvas');
+              sub.width = cellW;
+              sub.height = cellH;
+              sub.getContext('2d').drawImage(cleaned, c * cellW, r * cellH, cellW, cellH, 0, 0, cellW, cellH);
+              const trimmed = this.trimCanvas(sub);
+              if (trimmed && trimmed.width > 4 && trimmed.height > 4) {
+                frames.push({
+                  canvas: trimmed,
+                  white: this.createWhiteCanvas(trimmed),
+                  w: trimmed.width,
+                  h: trimmed.height
+                });
+              }
+            }
+          }
+          if (frames.length === 0) {
+            const trimmed = this.trimCanvas(cleaned) || cleaned;
+            frames.push({
+              canvas: trimmed,
+              white: this.createWhiteCanvas(trimmed),
+              w: trimmed.width,
+              h: trimmed.height
+            });
+          }
+          this.assets[slot.key] = {
+            frames,
+            previewUrl: frames[0].canvas.toDataURL('image/png'),
+            status: `已切出 ${frames.length} 帧`
+          };
+        },
+
+        loadFile(slotKey, file) {
+          if (!file || !file.type.startsWith('image/')) {
+            showToast('请上传 PNG / JPG 格式的图片素材');
+            return;
+          }
+          const slot = ASSET_SLOTS.find((s) => s.key === slotKey);
+          if (!slot) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+              this.rawImages[slotKey] = img;
+              this.processSlot(slot, img);
+              this.renderGrid();
+              showToast(`已导入：${slot.name}`);
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        },
+
+        rebuildAll() {
+          for (const slot of ASSET_SLOTS) {
+            if (this.rawImages[slot.key]) {
+              this.processSlot(slot, this.rawImages[slot.key]);
+            }
+          }
+          this.renderGrid();
+        },
+
+        clearSlot(slotKey) {
+          delete this.rawImages[slotKey];
+          delete this.assets[slotKey];
+          this.renderGrid();
+        },
+
+        clearAll() {
+          this.rawImages = {};
+          this.assets = {};
+          this.renderGrid();
+          showToast('已恢复全部默认暗黑童话手绘素材');
+        },
+
+        renderGrid() {
+          const gridEl = document.getElementById('assetGrid');
+          if (!gridEl) return;
+          gridEl.innerHTML = '';
+          const slots = ASSET_SLOTS.filter((s) => s.tab === this.activeTab);
+
+          for (const slot of slots) {
+            const loaded = this.assets[slot.key];
+            const card = document.createElement('div');
+            card.className = 'asset-card' + (loaded ? ' loaded' : '');
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.style.display = 'none';
+            input.addEventListener('change', (e) => {
+              if (e.target.files && e.target.files[0]) {
+                this.loadFile(slot.key, e.target.files[0]);
+              }
+              input.value = '';
+            });
+
+            const head = document.createElement('div');
+            head.className = 'asset-card-head';
+            head.innerHTML = `<span class="asset-card-name">${slot.name}</span><span class="asset-card-tag">${slot.tag}</span>`;
+
+            const preview = document.createElement('div');
+            preview.className = 'asset-preview-box';
+            if (loaded && loaded.previewUrl) {
+              const img = document.createElement('img');
+              img.src = loaded.previewUrl;
+              img.alt = slot.name;
+              preview.appendChild(img);
+            } else {
+              preview.innerHTML = `<div class="asset-preview-placeholder">点击选择图片<br/>或直接拖入此处</div>`;
+            }
+            preview.addEventListener('click', () => input.click());
+
+            const foot = document.createElement('div');
+            foot.className = 'asset-card-foot';
+            const status = document.createElement('span');
+            status.className = 'asset-status-text';
+            status.textContent = loaded ? (loaded.status || '已生效') : '默认手绘';
+            foot.appendChild(status);
+
+            if (loaded) {
+              const clr = document.createElement('button');
+              clr.type = 'button';
+              clr.className = 'asset-clear-btn';
+              clr.textContent = '清除';
+              clr.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.clearSlot(slot.key);
+              });
+              foot.appendChild(clr);
+            }
+
+            // 拖拽上传支持
+            card.addEventListener('dragover', (e) => {
+              e.preventDefault();
+              card.classList.add('dragover');
+            });
+            card.addEventListener('dragleave', () => card.classList.remove('dragover'));
+            card.addEventListener('drop', (e) => {
+              e.preventDefault();
+              card.classList.remove('dragover');
+              const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+              if (f) this.loadFile(slot.key, f);
+            });
+
+            card.appendChild(input);
+            card.appendChild(head);
+            card.appendChild(preview);
+            card.appendChild(foot);
+            gridEl.appendChild(card);
+          }
+        }
+      };
+
+      /* ============================================================
+         4. 连段配置、输入状态与核心游戏状态
+         ============================================================ */
+      const COMBO_CFG = {
+        1: { windup: 0.048, slash: 0.075, recovery: 0.14, damage: 10, isHeavy: false, knockback: 185, radius: 54, hitStop: 0.048, shakeAmp: 4.5, shakeDur: 0.12 },
+        2: { windup: 0.042, slash: 0.075, recovery: 0.14, damage: 12, isHeavy: false, knockback: 210, radius: 58, hitStop: 0.056, shakeAmp: 5.2, shakeDur: 0.14 },
+        3: { windup: 0.185, slash: 0.070, recovery: 0.22, damage: 26, isHeavy: true,  knockback: 310, radius: 74, hitStop: 0.115, shakeAmp: 9.2, shakeDur: 0.24 }
+      };
+
+      const keys = { left: false, right: false, down: false, jumpHeld: false };
+
+      const state = {
+        mode: 'playing',
+        elapsed: 0,
+        runTime: 0,
+        gold: 0,
+        goldPulse: 0,
+        coinCombo: 0,
+        coinComboTimer: 0,
+        pitFade: 0,
+        bossGateClosed: false,
+        bossGateDrop: 0,
+        bossGateSlammed: false,
+        victoryGateOpen: false,
+        checkpoint: { x: 110, y: FLOOR_Y },
+        time: { hitStop: 0, slowTimer: 0, slowDur: 0.28, scale: 1.0 },
+        camera: { x: 0, bossLocked: false, shakeTime: 0, shakeDur: 0.12, shakeAmp: 0, shakeX: 0, shakeY: 0 },
+        bgSpores: [],
+        platforms: [],
+        fragiles: [],
+        shrines: [],
+        crates: [],
+        pots: [],
+        fruits: [],
+        enemies: [],
+        boss: null,
+        projectiles: [],
+        shockwaves: [],
+        orbs: [],
+        vfx: { slashes: [], sparks: [], rings: [], dust: [], debris: [], dmgNums: [], afterimages: [] },
+        player: null
+      };
+
+      function createPlayer(x, y) {
+        return {
+          x, y,
+          w: 30, h: 58,
+          vx: 0, vy: 0,
+          facing: 1,
+          onGround: false,
+          coyote: 0,
+          jumpBuffer: 0,
+          dropThrough: 0,
+          lastSafeX: x,
+          lastSafeY: y,
+          hp: 100,
+          maxHp: 100,
+          whiteHp: 100,
+          whiteHold: 0,
+          hpShake: 0,
+          hurtInvuln: 0,
+          hurtFlash: 0,
+          heartbeatTimer: 0,
+          dashTimer: 0,
+          dashDir: 1,
+          dashCd: 0,
+          dashInvuln: 0,
+          dashGhostTimer: 0,
+          airDashUsed: false,
+          atkActive: false,
+          atkStep: 1,
+          atkPhase: 'windup',
+          atkTimer: 0,
+          atkCd: 0,
+          atkBuffer: false,
+          hitTargets: new Set(),
+          comboWindow: 0,
+          squashX: 1,
+          squashY: 1,
+          animTime: 0
+        };
+      }
+
+      function createBeetle(x, y, minX, maxX) {
+        return {
+          kind: 'beetle',
+          x, y,
+          w: 48, h: 42,
+          vx: 0,
+          facing: -1,
+          minX, maxX,
+          hp: 50, maxHp: 50,
+          whiteHp: 50, whiteHold: 0, hpShake: 0,
+          flash: 0, squashTimer: 0, hurtExpr: 0,
+          animTime: Math.random() * 4,
+          aiState: 'patrol', aiTimer: 0,
+          dead: false, isSummon: false
+        };
+      }
+
+      function createWisp(x, y, isSummon = false) {
+        return {
+          kind: 'wisp',
+          x, y, baseY: y,
+          w: 38, h: 46,
+          vx: 0,
+          facing: -1,
+          hp: 30, maxHp: 30,
+          whiteHp: 30, whiteHold: 0, hpShake: 0,
+          flash: 0, squashTimer: 0, hurtExpr: 0,
+          animTime: Math.random() * 4,
+          aiState: 'hover', aiTimer: 0.75,
+          dead: false, isSummon
+        };
+      }
+
+      function createBoss(x, y) {
+        return {
+          x, y,
+          w: 88, h: 132,
+          vx: 0,
+          facing: -1,
+          hp: 250, maxHp: 250,
+          whiteHp: 250, whiteHold: 0, hpShake: 0,
+          flash: 0, squashTimer: 0,
+          animTime: 0,
+          active: false, dead: false,
+          phase: 1,
+          aiState: 'idle', aiTimer: 1.0,
+          stepSoundTimer: 0.5,
+          summonTimer: 15,
+          attackHitDone: false
+        };
+      }
+
+      /* ============================================================
+         5. 关卡构建：《遗迹剑影》第一关 · 森林遗迹（四段区域）
+         ============================================================ */
+      function buildLevel(resetGold = true) {
+        document.getElementById('overlay').classList.remove('show');
+        state.mode = 'playing';
+        state.runTime = 0;
+        if (resetGold) state.gold = 0;
+        state.goldPulse = 0;
+        state.coinCombo = 0;
+        state.coinComboTimer = 0;
+        state.pitFade = 0;
+        state.bossGateClosed = false;
+        state.bossGateDrop = 0;
+        state.bossGateSlammed = false;
+        state.victoryGateOpen = false;
+        state.checkpoint = { x: 110, y: FLOOR_Y };
+        state.time = { hitStop: 0, slowTimer: 0, slowDur: 0.28, scale: 1.0 };
+        state.camera = { x: 0, bossLocked: false, shakeTime: 0, shakeDur: 0.12, shakeAmp: 0, shakeX: 0, shakeY: 0 };
+
+        state.bgSpores = [];
+        for (let i = 0; i < 36; i++) {
+          state.bgSpores.push({
+            x: Math.random() * VIEW_W,
+            y: Math.random() * VIEW_H,
+            vy: 8 + Math.random() * 14,
+            r: 1.2 + Math.random() * 2.2,
+            alpha: 0.22 + Math.random() * 0.45,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+
+        // 地形平台
+        state.platforms = [
+          // 区域 1：遗迹入口（宽阔平地 + 侧边高台 + 四级石阶 + 窄沟壑）
+          { x: 0,    y: FLOOR_Y,       w: 660,  h: 140, type: 'solid', ground: true },
+          { x: 375,  y: FLOOR_Y - 120, w: 145,  h: 22,  type: 'solid' },
+          { x: 660,  y: FLOOR_Y - 22,  w: 46,   h: 162, type: 'solid', stair: true, stairRoot: true },
+          { x: 706,  y: FLOOR_Y - 44,  w: 46,   h: 184, type: 'solid', stair: true },
+          { x: 752,  y: FLOOR_Y - 66,  w: 46,   h: 206, type: 'solid', stair: true },
+          { x: 798,  y: FLOOR_Y - 88,  w: 46,   h: 228, type: 'solid', stair: true },
+          { x: 844,  y: FLOOR_Y - 88,  w: 320,  h: 228, type: 'solid', ground: true },
+          // 窄沟壑 (1164 ~ 1290)
+          { x: 1290, y: FLOOR_Y,       w: 490,  h: 140, type: 'solid', ground: true },
+
+          // 区域 2：断桥跳台（宽沟壑 1780 ~ 2820，中间 1 块悬浮跳台 + 3 块易碎地块）
+          { x: 2310, y: FLOOR_Y - 62,  w: 175,  h: 26,  type: 'solid', suspended: true },
+
+          // 区域 3：密林长廊（上下双层结构 + 回血祭坛）
+          { x: 2820, y: FLOOR_Y,       w: 1560, h: 140, type: 'solid', ground: true },
+          { x: 3150, y: FLOOR_Y - 100, w: 220,  h: 14,  type: 'oneway' },
+          { x: 3490, y: FLOOR_Y - 130, w: 260,  h: 14,  type: 'oneway' },
+          { x: 3870, y: FLOOR_Y - 100, w: 220,  h: 14,  type: 'oneway' },
+          // 小裂谷 (4380 ~ 4505)
+          { x: 4505, y: FLOOR_Y,       w: 955,  h: 140, type: 'solid', ground: true },
+
+          // 区域 4：钟楼祭坛前廊 & Boss 房
+          { x: 5460, y: FLOOR_Y,       w: 1600, h: 140, type: 'solid', ground: true },
+          { x: 6160, y: FLOOR_Y - 96,  w: 155,  h: 14,  type: 'oneway' },
+          { x: 6685, y: FLOOR_Y - 96,  w: 155,  h: 14,  type: 'oneway' }
+        ];
+
+        // 易碎再生地块（断桥 3 块 + Boss 房左右高位 2 块）
+        state.fragiles = [
+          { x: 1875, y: FLOOR_Y - 10,  w: 115, h: 20, state: 'solid', timer: 0 },
+          { x: 2090, y: FLOOR_Y - 40,  w: 115, h: 20, state: 'solid', timer: 0 },
+          { x: 2595, y: FLOOR_Y - 34,  w: 115, h: 20, state: 'solid', timer: 0 },
+          { x: 6085, y: FLOOR_Y - 188, w: 105, h: 20, state: 'solid', timer: 0 },
+          { x: 6810, y: FLOOR_Y - 188, w: 105, h: 20, state: 'solid', timer: 0 }
+        ];
+
+        // 回血祭坛（密林长廊 50HP 充能型 + Boss 前廊一次性回满型）
+        state.shrines = [
+          { x: 5020, y: FLOOR_Y, w: 96,  pool: 50,  maxPool: 50,  fullOnce: false, cd: 0, standTime: 0, healTick: 0 },
+          { x: 5720, y: FLOOR_Y, w: 108, pool: 100, maxPool: 100, fullOnce: true,  cd: 0, standTime: 0, healTick: 0 }
+        ];
+
+        // 可推动 / 击碎的木箱
+        state.crates = [
+          { x: 335,  y: FLOOR_Y, w: 42, h: 42, vx: 0, vy: 0, hp: 20, broken: false, flash: 0 },
+          { x: 3110, y: FLOOR_Y, w: 42, h: 42, vx: 0, vy: 0, hp: 20, broken: false, flash: 0 },
+          { x: 3730, y: FLOOR_Y, w: 42, h: 42, vx: 0, vy: 0, hp: 20, broken: false, flash: 0 }
+        ];
+
+        // 石罐子
+        state.pots = [
+          // 区域 1 教学区 3 个路边 + 高台 2 个
+          { x: 235,  y: FLOOR_Y,       w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 270,  y: FLOOR_Y,       w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 575,  y: FLOOR_Y,       w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 420,  y: FLOOR_Y - 120, w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 465,  y: FLOOR_Y - 120, w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          // 区域 2 悬浮跳台角落 2 个
+          { x: 2350, y: FLOOR_Y - 62,  w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 2445, y: FLOOR_Y - 62,  w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          // 区域 3 铁艺高台与长廊
+          { x: 3260, y: FLOOR_Y - 100, w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 3620, y: FLOOR_Y - 130, w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 4720, y: FLOOR_Y,       w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          // 区域 4 Boss 房前廊 4 个补给石罐
+          { x: 5560, y: FLOOR_Y,       w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 5600, y: FLOOR_Y,       w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 5860, y: FLOOR_Y,       w: 26, h: 30, hp: 20, broken: false, flash: 0 },
+          { x: 5900, y: FLOOR_Y,       w: 26, h: 30, hp: 20, broken: false, flash: 0 }
+        ];
+
+        state.fruits = [];
+        state.projectiles = [];
+        state.shockwaves = [];
+        state.orbs = [];
+        state.vfx = { slashes: [], sparks: [], rings: [], dust: [], debris: [], dmgNums: [], afterimages: [] };
+
+        // 怪物分布
+        state.enemies = [
+          createBeetle(1530, FLOOR_Y, 1325, 1745),
+          createWisp(2420, 218, false),
+          createBeetle(3350, FLOOR_Y, 2980, 3680),
+          createBeetle(3980, FLOOR_Y, 3680, 4340),
+          createWisp(3630, 185, false)
+        ];
+
+        state.boss = createBoss(6760, FLOOR_Y);
+        state.player = createPlayer(110, FLOOR_Y);
+        showToast('第一关：森林遗迹 · 向前探索击败朽钟守林巨像');
+      }
+
+      function respawnAtCheckpoint() {
+        document.getElementById('overlay').classList.remove('show');
+        state.mode = 'playing';
+        state.projectiles = [];
+        state.shockwaves = [];
+        state.bossGateClosed = false;
+        state.bossGateDrop = 0;
+        state.bossGateSlammed = false;
+        state.camera.bossLocked = false;
+        if (state.boss && !state.boss.dead) {
+          state.boss = createBoss(6760, FLOOR_Y);
+        }
+        state.enemies = state.enemies.filter((e) => !e.isSummon);
+        state.player = createPlayer(state.checkpoint.x, state.checkpoint.y);
+        state.camera.x = clamp(state.player.x - VIEW_W * 0.35, 0, WORLD_W - VIEW_W);
+        showToast('已在最近祭坛重生');
+      }
+
+      function warpToBossCorridor() {
+        document.getElementById('overlay').classList.remove('show');
+        if (state.mode !== 'playing' || !state.boss || state.boss.dead) {
+          buildLevel(false);
+        }
+        state.bossGateClosed = false;
+        state.bossGateDrop = 0;
+        state.bossGateSlammed = false;
+        state.camera.bossLocked = false;
+        state.projectiles = [];
+        state.shockwaves = [];
+        state.enemies = state.enemies.filter((e) => !e.isSummon);
+        state.boss = createBoss(6760, FLOOR_Y);
+        state.checkpoint = { x: 5720, y: FLOOR_Y };
+        state.player = createPlayer(5820, FLOOR_Y);
+        state.camera.x = clamp(state.player.x - VIEW_W * 0.35, 0, WORLD_W - VIEW_W);
+        showToast('已传送至钟楼祭坛前廊 · 向右踏入 Boss 战');
+      }
+
+      function handlePlayerDeath() {
+        state.mode = 'dead';
+        const overlay = document.getElementById('overlay');
+        document.getElementById('modalRank').textContent = '☠';
+        document.getElementById('modalTitle').textContent = '剑折遗迹';
+        document.getElementById('modalSub').textContent = '黑暗吞噬了微光……但祭坛仍为你保留着一线生机。';
+        document.getElementById('statGold').textContent = `${state.gold}`;
+        document.getElementById('statHp').textContent = '0';
+        document.getElementById('statTime').textContent = `${Math.floor(state.runTime)}s`;
+        document.getElementById('btnModalPrimary').textContent = '从最近祭坛重生';
+        overlay.classList.add('show');
+      }
+
+      function handleVictory() {
+        if (state.mode === 'victory') return;
+        state.mode = 'victory';
+        const hp = Math.ceil(state.player.hp);
+        const rank = (hp >= 70 && state.gold >= 75) ? 'S' : (hp >= 40 || state.gold >= 50 ? 'A' : 'B');
+        const overlay = document.getElementById('overlay');
+        document.getElementById('modalRank').textContent = rank;
+        document.getElementById('modalTitle').textContent = '遗迹通关';
+        document.getElementById('modalSub').textContent = '朽钟守林巨像已倒下，森林遗迹的古老封印彻底解除。';
+        document.getElementById('statGold').textContent = `${state.gold}`;
+        document.getElementById('statHp').textContent = `${hp}`;
+        document.getElementById('statTime').textContent = `${Math.floor(state.runTime)}s`;
+        document.getElementById('btnModalPrimary').textContent = '再次挑战本关';
+        AudioSys.playHeal();
+        overlay.classList.add('show');
+      }
+
+      /* ============================================================
+         6. 打击感、特效、掉落与碰撞辅助函数
+         ============================================================ */
+      function addScreenShake(amp, dur) {
+        if (amp >= state.camera.shakeAmp || state.camera.shakeTime <= 0) {
+          state.camera.shakeAmp = amp;
+          state.camera.shakeDur = dur;
+          state.camera.shakeTime = dur;
+        }
+      }
+
+      function spawnDust(x, y, count = 6) {
+        for (let i = 0; i < count; i++) {
+          state.vfx.dust.push({
+            x: x + (Math.random() - 0.5) * 20,
+            y: y - 2,
+            vx: (Math.random() - 0.5) * 90,
+            vy: -25 - Math.random() * 55,
+            r: 2 + Math.random() * 3,
+            life: 0.25 + Math.random() * 0.2,
+            maxLife: 0.45,
+            color: 'rgba(180, 210, 215, 0.52)'
+          });
+        }
+      }
+
+      function spawnDebris(x, y, count = 10, color = '#64748b') {
+        for (let i = 0; i < count; i++) {
+          state.vfx.debris.push({
+            x: x + (Math.random() - 0.5) * 22,
+            y: y + (Math.random() - 0.5) * 16,
+            vx: (Math.random() - 0.5) * 240,
+            vy: -120 - Math.random() * 200,
+            size: 4 + Math.random() * 6,
+            rot: Math.random() * Math.PI * 2,
+            vrot: (Math.random() - 0.5) * 12,
+            color,
+            life: 0.45 + Math.random() * 0.35,
+            maxLife: 0.8
+          });
+        }
+      }
+
+      function spawnHitVfx(x, y, dir, dmg, isHeavy, color = '#67e8f9') {
+        const sparkCount = isHeavy ? 18 : 11;
+        for (let i = 0; i < sparkCount; i++) {
+          const ang = (Math.random() - 0.5) * 1.45 + (dir > 0 ? 0 : Math.PI);
+          const spd = (170 + Math.random() * 290) * (isHeavy ? 1.25 : 1);
+          state.vfx.sparks.push({
+            x, y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 45,
+            len: isHeavy ? 14 + Math.random() * 10 : 8 + Math.random() * 7,
+            color: i % 3 === 0 ? '#ffffff' : (isHeavy ? '#fde047' : color),
+            life: 0.16 + Math.random() * 0.14,
+            maxLife: 0.3
+          });
+        }
+        state.vfx.rings.push({
+          x, y,
+          r0: 6, r1: isHeavy ? 72 : 44,
+          w0: isHeavy ? 4.5 : 3.0,
+          color: isHeavy ? '#fde047' : color,
+          life: isHeavy ? 0.26 : 0.18,
+          maxLife: isHeavy ? 0.26 : 0.18
+        });
+        if (dmg > 0) {
+          state.vfx.dmgNums.push({
+            text: isHeavy ? `-${dmg}!` : `-${dmg}`,
+            x: x + (Math.random() - 0.5) * 14,
+            y: y - 16,
+            vx: dir * (25 + Math.random() * 35),
+            vy: isHeavy ? -155 : -115,
+            isHeavy,
+            life: 0.68,
+            maxLife: 0.68
+          });
+        }
+      }
+
+      function spawnOrbs(x, y, count) {
+        const floorY = Math.min(FLOOR_Y, y + 28);
+        for (let i = 0; i < count; i++) {
+          const ang = -Math.PI * 0.15 - Math.random() * Math.PI * 0.7;
+          const spd = 90 + Math.random() * 180;
+          state.orbs.push({
+            phase: 'scatter',
+            timer: 0,
+            scatterDur: 0.24 + Math.random() * 0.12,
+            pauseDur: 0.18 + Math.random() * 0.24,
+            flyDur: 0.44 + Math.random() * 0.18,
+            wx: x, wy: y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 40,
+            floorY,
+            sx: 0, sy: 0, scrX: 0, scrY: 0, cx: 0, cy: 0,
+            trail: []
+          });
+        }
+      }
+
+      function getActiveSolidRects() {
+        const list = state.platforms.slice();
+        for (const fr of state.fragiles) {
+          if (fr.state !== 'broken') {
+            list.push({ x: fr.x, y: fr.y, w: fr.w, h: fr.h, type: 'solid', fragileRef: fr });
+          }
+        }
+        return list;
+      }
+
+      /* ============================================================
+         7. 战斗受伤、受击反馈与操作触发
+         ============================================================ */
+      function damagePlayer(dmg, srcX) {
+        const p = state.player;
+        if (!p || state.mode !== 'playing') return;
+        if (p.hurtInvuln > 0 || p.dashInvuln > 0) return;
+
+        p.hp = Math.max(0, p.hp - dmg);
+        p.whiteHold = 0.25;
+        p.hpShake = 0.22;
+        p.hurtInvuln = 1.0;
+        p.hurtFlash = 0.28;
+        const knockDir = p.x >= srcX ? 1 : -1;
+        p.vx = knockDir * 240;
+        p.vy = -210;
+        p.onGround = false;
+
+        AudioSys.playHurt();
+        addScreenShake(6.5, 0.2);
+        state.vfx.dmgNums.push({
+          text: `-${dmg}`,
+          x: p.x, y: p.y - 62,
+          vx: knockDir * 28, vy: -120,
+          isHeavy: false, life: 0.65, maxLife: 0.65
+        });
+
+        if (p.hp <= 0) handlePlayerDeath();
+      }
+
+      function hitEnemy(e, cfg, dir) {
+        e.hp = Math.max(0, e.hp - cfg.damage);
+        e.whiteHold = 0.30;
+        e.hpShake = cfg.isHeavy ? 0.24 : 0.15;
+        e.flash = 0.09;
+        e.squashTimer = 0.40;
+        e.hurtExpr = 0.42;
+        e.vx = dir * cfg.knockback;
+        if (e.kind === 'wisp' && e.aiState === 'charge') {
+          e.aiState = 'cooldown';
+          e.aiTimer = 1.1;
+        }
+
+        AudioSys.playHit(cfg.isHeavy, 'stone');
+        spawnHitVfx(e.x - dir * 10, e.y - e.h * 0.55, dir, cfg.damage, cfg.isHeavy);
+        spawnDebris(e.x, e.y - e.h * 0.5, cfg.isHeavy ? 8 : 4, e.kind === 'beetle' ? '#4f6d6c' : '#857758');
+
+        if (e.hp <= 0 && !e.dead) {
+          e.dead = true;
+          const dropCount = e.kind === 'beetle' ? (3 + Math.floor(Math.random() * 3)) : (5 + Math.floor(Math.random() * 4));
+          spawnOrbs(e.x, e.y - 18, dropCount);
+          spawnDebris(e.x, e.y - 20, 12, '#67e8f9');
+        }
+      }
+
+      function hitBoss(b, cfg, dir) {
+        b.hp = Math.max(0, b.hp - cfg.damage);
+        b.whiteHold = 0.30;
+        b.hpShake = cfg.isHeavy ? 0.24 : 0.15;
+        b.flash = 0.09;
+        b.squashTimer = 0.28;
+
+        AudioSys.playHit(cfg.isHeavy, 'stone');
+        spawnHitVfx(b.x - dir * 24, b.y - 72, dir, cfg.damage, cfg.isHeavy);
+        spawnDebris(b.x - dir * 18, b.y - 64, cfg.isHeavy ? 10 : 5, '#6f5c3a');
+
+        if (b.phase === 1 && b.hp > 0 && b.hp <= b.maxHp * 0.5) {
+          b.phase = 2;
+          b.summonTimer = 5.0;
+          AudioSys.playBossBell();
+          addScreenShake(10, 0.36);
+          state.vfx.rings.push({ x: b.x, y: b.y - 72, r0: 14, r1: 145, w0: 5, color: '#fde047', life: 0.42, maxLife: 0.42 });
+          showToast('朽钟共鸣！巨像进入二阶段狂暴！');
+        }
+
+        if (b.hp <= 0 && !b.dead) {
+          b.dead = true;
+          state.victoryGateOpen = true;
+          state.camera.bossLocked = false;
+          for (const e of state.enemies) {
+            if (e.isSummon && !e.dead) {
+              e.dead = true;
+              spawnOrbs(e.x, e.y - 16, 4);
+            }
+          }
+          spawnOrbs(b.x, b.y - 60, 60);
+          spawnDebris(b.x, b.y - 54, 24, '#8f723f');
+          AudioSys.playBossBell();
+          AudioSys.playBossSlam();
+          state.time.hitStop = 0.16;
+          state.time.slowDur = 0.45;
+          state.time.slowTimer = 0.45;
+          showToast('朽钟守林巨像已陨落！前往右侧通关之门！', 3800);
+        }
+      }
+
+      function startPlayerAttack(step) {
+        const p = state.player;
+        p.atkActive = true;
+        p.atkStep = step;
+        p.atkPhase = 'windup';
+        p.atkTimer = 0;
+        p.hitTargets = new Set();
+        if (keys.left && !keys.right) p.facing = -1;
+        else if (keys.right && !keys.left) p.facing = 1;
+      }
+
+      function triggerJump() {
+        AudioSys.unlock();
+        if (state.mode !== 'playing') return;
+        const p = state.player;
+        if (keys.down && p.onGround) {
+          p.dropThrough = 0.22;
+          p.y += 4;
+          p.onGround = false;
+          return;
+        }
+        p.jumpBuffer = 0.11;
+      }
+
+      function triggerAttack() {
+        AudioSys.unlock();
+        if (state.mode !== 'playing') return;
+        const p = state.player;
+        if (p.dashTimer > 0) return;
+
+        if (!p.atkActive) {
+          if (p.atkCd > 0) {
+            p.atkBuffer = true;
+            return;
+          }
+          const nextStep = p.comboWindow > 0 ? (p.atkStep % 3) + 1 : 1;
+          startPlayerAttack(nextStep);
+        } else if (p.atkPhase === 'recovery' || (p.atkPhase === 'slash' && p.atkTimer >= COMBO_CFG[p.atkStep].slash * 0.45)) {
+          p.atkBuffer = true;
+        }
+      }
+
+      function triggerDash() {
+        AudioSys.unlock();
+        if (state.mode !== 'playing') return;
+        const p = state.player;
+        if (p.dashCd > 0 || p.dashTimer > 0) return;
+        if (!p.onGround && p.airDashUsed) return;
+
+        if (keys.left && !keys.right) p.facing = -1;
+        else if (keys.right && !keys.left) p.facing = 1;
+
+        p.dashDir = p.facing;
+        p.dashTimer = 0.18;
+        p.dashInvuln = 0.13;
+        p.dashCd = 0.80;
+        p.dashGhostTimer = 0;
+        if (!p.onGround) p.airDashUsed = true;
+        if (p.atkActive && p.atkPhase === 'recovery') p.atkActive = false;
+
+        AudioSys.playDash();
+        spawnDust(p.x, p.y, 6);
+      }
+
+      /* ============================================================
+         8. 实体更新循环
+         ============================================================ */
+      function updatePlayer(dt) {
+        const p = state.player;
+        p.animTime += dt;
+        p.squashX = lerp(p.squashX, 1, Math.min(1, dt * 14));
+        p.squashY = lerp(p.squashY, 1, Math.min(1, dt * 14));
+
+        if (p.jumpBuffer > 0) p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
+        if (p.dropThrough > 0) p.dropThrough = Math.max(0, p.dropThrough - dt);
+        if (p.dashCd > 0) p.dashCd = Math.max(0, p.dashCd - dt);
+        if (p.dashInvuln > 0) p.dashInvuln = Math.max(0, p.dashInvuln - dt);
+        if (p.hurtInvuln > 0) p.hurtInvuln = Math.max(0, p.hurtInvuln - dt);
+        if (p.hurtFlash > 0) p.hurtFlash = Math.max(0, p.hurtFlash - dt);
+        if (p.hpShake > 0) p.hpShake = Math.max(0, p.hpShake - dt);
+        if (p.atkCd > 0) p.atkCd = Math.max(0, p.atkCd - dt);
+        if (p.comboWindow > 0) p.comboWindow = Math.max(0, p.comboWindow - dt);
+
+        // 主角白条残血平滑收缩
+        if (p.whiteHp > p.hp) {
+          if (p.whiteHold > 0) p.whiteHold = Math.max(0, p.whiteHold - dt);
+          else p.whiteHp = Math.max(p.hp, p.whiteHp - Math.max(36, (p.whiteHp - p.hp) * 6) * dt);
+        }
+
+        // 低血量心跳音效预警
+        if (p.hp > 0 && p.hp < 25) {
+          p.heartbeatTimer -= dt;
+          if (p.heartbeatTimer <= 0) {
+            p.heartbeatTimer = 0.83;
+            AudioSys.playHeartbeat();
+          }
+        }
+
+        // 三段挥剑攻击状态机与命中/弹反判定
+        if (p.atkActive) {
+          const cfg = COMBO_CFG[p.atkStep];
+          p.atkTimer += dt;
+          if (p.atkPhase === 'windup') {
+            if (p.atkTimer >= cfg.windup) {
+              p.atkPhase = 'slash';
+              p.atkTimer = 0;
+              p.hitTargets = new Set();
+              AudioSys.playSlash(p.atkStep);
+              state.vfx.slashes.push({
+                x: p.x + p.facing * 24,
+                y: p.y - 32,
+                facing: p.facing,
+                step: p.atkStep,
+                radius: cfg.radius,
+                life: 0.17,
+                maxLife: 0.17
+              });
+            }
+          } else if (p.atkPhase === 'slash') {
+            const reach = cfg.isHeavy ? 96 : 78;
+            const atkBox = {
+              x: p.facing > 0 ? p.x - 6 : p.x + 6 - reach,
+              y: p.y - 68,
+              w: reach,
+              h: 68
+            };
+            let hitSomething = false;
+
+            // 1) 挥剑弹反残铃浮灵光弹
+            for (const pr of state.projectiles) {
+              if (pr.deflected) continue;
+              const prBox = { x: pr.x - pr.r - 6, y: pr.y - pr.r - 6, w: (pr.r + 6) * 2, h: (pr.r + 6) * 2 };
+              if (rectsOverlap(atkBox, prBox)) {
+                pr.deflected = true;
+                pr.dmg = 22;
+                pr.life = 2.4;
+                pr.trail = [{ x: pr.x, y: pr.y }];
+                let tx = p.facing, ty = 0;
+                if (pr.owner && !pr.owner.dead) {
+                  const dx = pr.owner.x - pr.x;
+                  const dy = (pr.owner.y - pr.owner.h * 0.5) - pr.y;
+                  const len = Math.max(1, Math.hypot(dx, dy));
+                  tx = dx / len; ty = dy / len;
+                }
+                pr.vx = tx * 490;
+                pr.vy = ty * 490;
+                AudioSys.playParry();
+                state.time.hitStop = Math.max(state.time.hitStop, 0.06);
+                addScreenShake(5.5, 0.14);
+                state.vfx.rings.push({ x: pr.x, y: pr.y, r0: 6, r1: 54, w0: 3.5, color: '#67e8f9', life: 0.22, maxLife: 0.22 });
+                state.vfx.dmgNums.push({ text: '弹反!', x: pr.x, y: pr.y - 14, vx: 0, vy: -95, isParry: true, life: 0.65, maxLife: 0.65 });
+              }
+            }
+
+            // 2) 命中普通小怪
+            for (const e of state.enemies) {
+              if (e.dead || p.hitTargets.has(e)) continue;
+              const eb = { x: e.x - e.w * 0.55, y: e.y - e.h - 4, w: e.w * 1.1, h: e.h + 8 };
+              if (rectsOverlap(atkBox, eb)) {
+                p.hitTargets.add(e);
+                hitEnemy(e, cfg, p.facing);
+                hitSomething = true;
+              }
+            }
+
+            // 3) 命中关底 Boss
+            const b = state.boss;
+            if (b && b.active && !b.dead && !p.hitTargets.has(b)) {
+              const bb = { x: b.x - b.w * 0.5, y: b.y - b.h, w: b.w, h: b.h };
+              if (rectsOverlap(atkBox, bb)) {
+                p.hitTargets.add(b);
+                hitBoss(b, cfg, p.facing);
+                hitSomething = true;
+              }
+            }
+
+            // 4) 击碎木箱
+            for (const c of state.crates) {
+              if (c.broken || p.hitTargets.has(c)) continue;
+              const cb = { x: c.x - c.w * 0.5, y: c.y - c.h, w: c.w, h: c.h };
+              if (rectsOverlap(atkBox, cb)) {
+                p.hitTargets.add(c);
+                c.hp -= 10;
+                c.flash = 0.09;
+                c.vx = p.facing * 120;
+                AudioSys.playHit(false, 'wood');
+                spawnHitVfx(c.x, c.y - c.h * 0.5, p.facing, 0, false, '#e6c687');
+                if (c.hp <= 0) {
+                  c.broken = true;
+                  spawnDebris(c.x, c.y - 20, 12, '#8b5e34');
+                  spawnOrbs(c.x, c.y - 20, 2 + Math.floor(Math.random() * 4));
+                  if (Math.random() < 0.30) state.fruits.push({ x: c.x, y: c.y - 24, vy: -180, bob: 0 });
+                }
+              }
+            }
+
+            // 5) 击碎石罐
+            for (const pot of state.pots) {
+              if (pot.broken || p.hitTargets.has(pot)) continue;
+              const pb = { x: pot.x - pot.w * 0.55, y: pot.y - pot.h, w: pot.w * 1.1, h: pot.h };
+              if (rectsOverlap(atkBox, pb)) {
+                p.hitTargets.add(pot);
+                pot.hp -= 10;
+                pot.flash = 0.09;
+                AudioSys.playHit(false, 'stone');
+                spawnHitVfx(pot.x, pot.y - 14, p.facing, 0, false, '#cbd5e1');
+                if (pot.hp <= 0) {
+                  pot.broken = true;
+                  spawnDebris(pot.x, pot.y - 14, 10, '#64748b');
+                  if (Math.random() < 0.70) spawnOrbs(pot.x, pot.y - 16, 1 + Math.floor(Math.random() * 3));
+                  if (Math.random() < 0.50) state.fruits.push({ x: pot.x, y: pot.y - 18, vy: -165, bob: 0 });
+                }
+              }
+            }
+
+            if (hitSomething) {
+              state.time.hitStop = Math.max(state.time.hitStop, cfg.hitStop);
+              addScreenShake(cfg.shakeAmp, cfg.shakeDur);
+              if (cfg.isHeavy) {
+                state.time.slowDur = 0.28;
+                state.time.slowTimer = 0.28;
+              }
+            }
+
+            if (p.atkTimer >= cfg.slash) {
+              p.atkPhase = 'recovery';
+              p.atkTimer = 0;
+            }
+          } else {
+            if (p.atkBuffer && p.atkTimer >= cfg.recovery * 0.28) {
+              p.atkBuffer = false;
+              startPlayerAttack((p.atkStep % 3) + 1);
+            } else if (p.atkTimer >= cfg.recovery) {
+              p.atkActive = false;
+              p.comboWindow = 0.62;
+              p.atkCd = p.atkStep === 3 ? 0.18 : 0.05;
+            }
+          }
+        } else if (p.atkBuffer && p.atkCd <= 0) {
+          p.atkBuffer = false;
+          startPlayerAttack(p.comboWindow > 0 ? (p.atkStep % 3) + 1 : 1);
+        }
+
+        // 冲刺与水平移动
+        if (p.dashTimer > 0) {
+          p.dashTimer = Math.max(0, p.dashTimer - dt);
+          p.vx = p.dashDir * 1180;
+          p.vy = 0;
+          p.dashGhostTimer -= dt;
+          if (p.dashGhostTimer <= 0) {
+            p.dashGhostTimer = 0.026;
+            const ghostSheetKey = AssetManager.get('player_run') ? 'player_run' : 'player_idle';
+            const ghostFrameIdx = Math.floor(p.animTime * 14);
+            state.vfx.afterimages.push({
+              x: p.x,
+              y: p.y,
+              facing: p.facing,
+              sheetKey: ghostSheetKey,
+              frameIdx: ghostFrameIdx,
+              animTime: p.animTime,
+              life: 0.26,
+              maxLife: 0.26
+            });
+          }
+        } else {
+          const moveDir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+          if (moveDir !== 0) {
+            if (!p.atkActive) p.facing = moveDir;
+            const targetSpd = moveDir * (p.atkActive ? 130 : 285);
+            p.vx = lerp(p.vx, targetSpd, Math.min(1, dt * 22));
+          } else {
+            p.vx = lerp(p.vx, 0, Math.min(1, dt * 24));
+            if (Math.abs(p.vx) < 4) p.vx = 0;
+          }
+
+          // 重力与可变高度跳跃
+          let grav = 1480;
+          if (p.vy < 0 && !keys.jumpHeld) grav = 2650;
+          if (Math.abs(p.vy) < 65 && !p.onGround) grav = 980;
+          p.vy = Math.min(820, p.vy + grav * dt);
+        }
+
+        // 土狼时间 + 跳跃预输入
+        if (p.onGround) { p.coyote = 0.10; p.airDashUsed = false; }
+        else p.coyote = Math.max(0, p.coyote - dt);
+
+        if (p.jumpBuffer > 0 && p.coyote > 0 && p.dashTimer <= 0) {
+          p.vy = -575;
+          p.onGround = false;
+          p.coyote = 0;
+          p.jumpBuffer = 0;
+          p.squashX = 0.82; p.squashY = 1.22;
+          AudioSys.playJump();
+          spawnDust(p.x, p.y, 5);
+        }
+
+        const prevY = p.y;
+        const wasOnGround = p.onGround;
+
+        // 水平移动 + 边界与推木箱
+        p.x += p.vx * dt;
+        const minBound = state.bossGateClosed ? BOSS_ARENA_LEFT + 18 : 22;
+        const maxBound = state.bossGateClosed ? BOSS_ARENA_RIGHT - 18 : WORLD_W - 22;
+        p.x = clamp(p.x, minBound, maxBound);
+
+        // 推动木箱
+        for (const c of state.crates) {
+          if (c.broken) continue;
+          const pb = { x: p.x - p.w * 0.5, y: p.y - p.h + 6, w: p.w, h: p.h - 10 };
+          const cb = { x: c.x - c.w * 0.5, y: c.y - c.h, w: c.w, h: c.h };
+          if (rectsOverlap(pb, cb)) {
+            if (p.x < c.x) {
+              if (keys.right) c.vx = 105;
+              p.x = c.x - c.w * 0.5 - p.w * 0.5;
+            } else {
+              if (keys.left) c.vx = -105;
+              p.x = c.x + c.w * 0.5 + p.w * 0.5;
+            }
+          }
+        }
+
+        // 垂直移动与平台落地碰撞
+        p.y += p.vy * dt;
+        p.onGround = false;
+        const solids = getActiveSolidRects();
+
+        // 1) 木箱顶部可站立（垫脚跳）
+        for (const c of state.crates) {
+          if (c.broken) continue;
+          if (p.vy >= 0 && Math.abs(p.x - c.x) < (c.w + p.w) * 0.46) {
+            const topY = c.y - c.h;
+            if (prevY <= topY + 10 && p.y >= topY) {
+              p.y = topY;
+              p.vy = 0;
+              p.onGround = true;
+            }
+          }
+        }
+
+        // 2) 地形平台碰撞
+        for (const pl of solids) {
+          if (p.x + p.w * 0.42 <= pl.x || p.x - p.w * 0.42 >= pl.x + pl.w) continue;
+          if (pl.type === 'oneway') {
+            if (p.dropThrough <= 0 && p.vy >= 0 && prevY <= pl.y + 8 && p.y >= pl.y) {
+              p.y = pl.y;
+              p.vy = 0;
+              p.onGround = true;
+            }
+          } else {
+            if (p.vy >= 0 && prevY <= pl.y + 14 && p.y >= pl.y) {
+              p.y = pl.y;
+              p.vy = 0;
+              p.onGround = true;
+              if (pl.fragileRef) {
+                if (pl.fragileRef.state === 'solid') {
+                  pl.fragileRef.state = 'shaking';
+                  pl.fragileRef.timer = 0.80;
+                  AudioSys.playHit(false, 'stone');
+                }
+              } else {
+                p.lastSafeX = clamp(p.x, pl.x + 28, pl.x + pl.w - 28);
+                p.lastSafeY = pl.y;
+              }
+            }
+          }
+        }
+
+        if (!wasOnGround && p.onGround) {
+          p.squashX = 1.22; p.squashY = 0.82;
+          spawnDust(p.x, p.y, 6);
+        }
+
+        // 触发 Boss 房石门闭锁
+        if (!state.bossGateClosed && state.boss && !state.boss.dead && p.x > BOSS_TRIGGER_X) {
+          state.bossGateClosed = true;
+          state.bossGateDrop = 0;
+          state.bossGateSlammed = false;
+          state.camera.bossLocked = true;
+          state.boss.active = true;
+          state.boss.aiState = 'march';
+          state.boss.aiTimer = 1.0;
+          AudioSys.playBossBell();
+          addScreenShake(7, 0.32);
+          showToast('巨型石门砸落闭锁 · 朽钟守林巨像苏醒！');
+        }
+
+        // 进入开启的通关之门
+        if (state.victoryGateOpen && Math.abs(p.x - 6925) < 42 && Math.abs(p.y - FLOOR_Y) < 40) {
+          handleVictory();
+        }
+
+        // 沟壑坠落惩罚
+        if (p.y > VIEW_H + 80) {
+          state.pitFade = 0.35;
+          p.hp = Math.max(0, p.hp - 20);
+          p.whiteHold = 0.25;
+          AudioSys.playHurt();
+          if (p.hp <= 0) {
+            handlePlayerDeath();
+          } else {
+            p.x = p.lastSafeX;
+            p.y = p.lastSafeY - 6;
+            p.vx = 0; p.vy = 0;
+            p.hurtInvuln = 1.0;
+            showToast('坠入深渊裂谷！扣除 20 点血量并传回安全石台');
+          }
+        }
+      }
+
+      function updateFragilesAndShrines(dt) {
+        const p = state.player;
+        for (const fr of state.fragiles) {
+          if (fr.state === 'shaking') {
+            fr.timer -= dt;
+            if (fr.timer <= 0) {
+              fr.state = 'broken';
+              fr.timer = 2.6;
+              AudioSys.playHit(true, 'stone');
+              spawnDebris(fr.x + fr.w * 0.5, fr.y + 8, 12, '#64748b');
+            }
+          } else if (fr.state === 'broken') {
+            fr.timer -= dt;
+            if (fr.timer <= 0) fr.state = 'solid';
+          }
+        }
+
+        for (const sh of state.shrines) {
+          if (sh.cd > 0) {
+            sh.cd = Math.max(0, sh.cd - dt);
+            if (sh.cd <= 0 && !sh.fullOnce) sh.pool = sh.maxPool;
+          }
+          const standing = p.onGround && Math.abs(p.x - sh.x) < sh.w * 0.55 && Math.abs(p.y - sh.y) < 12;
+          if (standing && sh.pool > 0) {
+            sh.standTime += dt;
+            state.checkpoint = { x: sh.x, y: sh.y };
+            if (sh.standTime >= 0.45 && p.hp < p.maxHp) {
+              if (sh.fullOnce) {
+                const heal = p.maxHp - p.hp;
+                p.hp = p.maxHp;
+                p.whiteHp = p.maxHp;
+                sh.pool = 0;
+                AudioSys.playHeal();
+                state.vfx.dmgNums.push({ text: `+${Math.ceil(heal)}`, x: p.x, y: p.y - 68, vx: 0, vy: -70, isHeal: true, life: 0.85, maxLife: 0.85 });
+                showToast('回血祭坛已补满血量并设为复活点');
+              } else {
+                const delta = Math.min(14 * dt, sh.pool, p.maxHp - p.hp);
+                p.hp += delta;
+                p.whiteHp = Math.max(p.whiteHp, p.hp);
+                sh.pool -= delta;
+                sh.healTick -= dt;
+                if (sh.healTick <= 0) {
+                  sh.healTick = 0.25;
+                  AudioSys.playHeal();
+                  state.vfx.dust.push({
+                    x: p.x + (Math.random() - 0.5) * 28, y: p.y - 8,
+                    vx: 0, vy: -70, r: 3.5, life: 0.55, maxLife: 0.55, color: 'rgba(253, 224, 71, 0.8)'
+                  });
+                }
+                if (sh.pool <= 0.1) { sh.pool = 0; sh.cd = 18; }
+              }
+            }
+          } else {
+            sh.standTime = 0;
+          }
+        }
+      }
+
+      function updateCratesAndFruits(dt) {
+        const p = state.player;
+        for (const c of state.crates) {
+          if (c.broken) continue;
+          if (c.flash > 0) c.flash = Math.max(0, c.flash - dt);
+          c.vx = lerp(c.vx, 0, Math.min(1, dt * 10));
+          c.vy = Math.min(720, c.vy + 1400 * dt);
+          c.x += c.vx * dt;
+          const prevY = c.y;
+          c.y += c.vy * dt;
+          for (const pl of state.platforms) {
+            if (pl.type !== 'solid') continue;
+            if (c.x > pl.x && c.x < pl.x + pl.w && prevY <= pl.y + 10 && c.y >= pl.y) {
+              c.y = pl.y; c.vy = 0;
+            }
+          }
+        }
+
+        for (let i = state.fruits.length - 1; i >= 0; i--) {
+          const f = state.fruits[i];
+          f.bob += dt * 5;
+          f.vy = Math.min(500, f.vy + 900 * dt);
+          f.y += f.vy * dt;
+          for (const pl of state.platforms) {
+            if (f.x > pl.x && f.x < pl.x + pl.w && f.y >= pl.y - 12 && f.y <= pl.y + 20) {
+              f.y = pl.y - 12; f.vy = 0;
+            }
+          }
+          if (Math.hypot(p.x - f.x, (p.y - 30) - f.y) < 34) {
+            const heal = Math.min(10, p.maxHp - p.hp);
+            p.hp = Math.min(p.maxHp, p.hp + 10);
+            p.whiteHp = Math.max(p.whiteHp, p.hp);
+            AudioSys.playHeal();
+            state.vfx.dmgNums.push({ text: `+${Math.max(10, Math.round(heal))}`, x: f.x, y: f.y - 12, vx: 0, vy: -75, isHeal: true, life: 0.75, maxLife: 0.75 });
+            state.fruits.splice(i, 1);
+          }
+        }
+      }
+
+      function updateEnemies(dt) {
+        const p = state.player;
+        for (const e of state.enemies) {
+          if (e.dead) continue;
+          e.animTime += dt;
+          if (e.flash > 0) e.flash = Math.max(0, e.flash - dt);
+          if (e.squashTimer > 0) e.squashTimer = Math.max(0, e.squashTimer - dt);
+          if (e.hurtExpr > 0) e.hurtExpr = Math.max(0, e.hurtExpr - dt);
+          if (e.hpShake > 0) e.hpShake = Math.max(0, e.hpShake - dt);
+          if (e.whiteHp > e.hp) {
+            if (e.whiteHold > 0) e.whiteHold = Math.max(0, e.whiteHold - dt);
+            else e.whiteHp = Math.max(e.hp, e.whiteHp - Math.max(38, (e.whiteHp - e.hp) * 6.5) * dt);
+          }
+
+          if (e.kind === 'beetle') {
+            const dx = p.x - e.x;
+            const dy = Math.abs(p.y - e.y);
+            if (e.aiState === 'patrol') {
+              e.vx = lerp(e.vx, e.facing * 58, Math.min(1, dt * 8));
+              if (e.x <= e.minX) e.facing = 1;
+              if (e.x >= e.maxX) e.facing = -1;
+              if (Math.abs(dx) < 250 && dy < 70) {
+                e.facing = dx >= 0 ? 1 : -1;
+                e.aiState = 'windup';
+                e.aiTimer = 0.35;
+                e.vx = 0;
+              }
+            } else if (e.aiState === 'windup') {
+              e.vx = lerp(e.vx, 0, Math.min(1, dt * 12));
+              e.aiTimer -= dt;
+              if (e.aiTimer <= 0) {
+                e.aiState = 'charge';
+                e.aiTimer = 0.45;
+                e.vx = e.facing * 310;
+              }
+            } else if (e.aiState === 'charge') {
+              e.aiTimer -= dt;
+              if (e.aiTimer <= 0) {
+                e.aiState = 'recover';
+                e.aiTimer = 0.55;
+              }
+            } else {
+              e.vx = lerp(e.vx, 0, Math.min(1, dt * 10));
+              e.aiTimer -= dt;
+              if (e.aiTimer <= 0) e.aiState = 'patrol';
+            }
+
+            e.x = clamp(e.x + e.vx * dt, e.minX, e.maxX);
+            // 接触伤害
+            if (Math.abs(p.x - e.x) < 34 && Math.abs((p.y - 28) - (e.y - 20)) < 32) {
+              damagePlayer(10, e.x);
+            }
+          } else if (e.kind === 'wisp') {
+            const dx = p.x - e.x;
+            const dy = (p.y - 34) - (e.y - 20);
+            e.facing = dx >= 0 ? 1 : -1;
+            e.y = e.baseY + Math.sin(e.animTime * 2.8) * 14;
+            e.vx = lerp(e.vx, 0, Math.min(1, dt * 6));
+            e.x += e.vx * dt;
+
+            if (e.aiState === 'hover') {
+              if (Math.abs(dx) < 420) {
+                e.aiTimer -= dt;
+                if (e.aiTimer <= 0) { e.aiState = 'charge'; e.aiTimer = 0.42; }
+              }
+            } else if (e.aiState === 'charge') {
+              e.aiTimer -= dt;
+              if (e.aiTimer <= 0) {
+                const len = Math.max(1, Math.hypot(dx, dy));
+                state.projectiles.push({
+                  x: e.x + e.facing * 12,
+                  y: e.y - 16,
+                  vx: (dx / len) * 235,
+                  vy: (dy / len) * 235,
+                  r: 7, dmg: 5, life: 3.4,
+                  owner: e, deflected: false, trail: []
+                });
+                e.aiState = 'cooldown';
+                e.aiTimer = 1.65;
+              }
+            } else {
+              e.aiTimer -= dt;
+              if (e.aiTimer <= 0) { e.aiState = 'hover'; e.aiTimer = 0.7; }
+            }
+          }
+        }
+      }
+
+      function updateBoss(dt) {
+        const b = state.boss;
+        if (!b || !b.active || b.dead) return;
+        const p = state.player;
+        b.animTime += dt;
+        if (b.flash > 0) b.flash = Math.max(0, b.flash - dt);
+        if (b.squashTimer > 0) b.squashTimer = Math.max(0, b.squashTimer - dt);
+        if (b.hpShake > 0) b.hpShake = Math.max(0, b.hpShake - dt);
+        if (b.whiteHp > b.hp) {
+          if (b.whiteHold > 0) b.whiteHold = Math.max(0, b.whiteHold - dt);
+          else b.whiteHp = Math.max(b.hp, b.whiteHp - Math.max(40, (b.whiteHp - b.hp) * 6) * dt);
+        }
+
+        const speedMul = b.phase === 2 ? 1.22 : 1.0;
+
+        // 二阶段每 15s 召唤 1 只残铃浮灵（最多同时存在 2 只召唤浮灵）
+        if (b.phase === 2) {
+          b.summonTimer -= dt;
+          if (b.summonTimer <= 0) {
+            b.summonTimer = 15;
+            const liveSummons = state.enemies.filter((e) => e.isSummon && !e.dead).length;
+            if (liveSummons < 2) {
+              const sx = clamp(b.x + (Math.random() < 0.5 ? -160 : 160), BOSS_ARENA_LEFT + 90, BOSS_ARENA_RIGHT - 90);
+              state.enemies.push(createWisp(sx, 210, true));
+              AudioSys.playBossBell();
+              state.vfx.rings.push({ x: sx, y: 210, r0: 8, r1: 58, w0: 3, color: '#67e8f9', life: 0.3, maxLife: 0.3 });
+            }
+          }
+        }
+
+        const dx = p.x - b.x;
+        if (b.aiState === 'march') {
+          b.facing = dx >= 0 ? 1 : -1;
+          b.vx = b.facing * 78 * speedMul;
+          b.x = clamp(b.x + b.vx * dt, BOSS_ARENA_LEFT + 75, BOSS_ARENA_RIGHT - 75);
+          b.stepSoundTimer -= dt;
+          if (b.stepSoundTimer <= 0) {
+            b.stepSoundTimer = 0.62 / speedMul;
+            addScreenShake(2.2, 0.08);
+          }
+          b.aiTimer -= dt * speedMul;
+          if (b.aiTimer <= 0) {
+            b.attackHitDone = false;
+            if (Math.abs(dx) < 125 && Math.random() < 0.55) {
+              b.aiState = 'sweep_windup';
+              b.aiTimer = 0.42 / speedMul;
+            } else {
+              b.aiState = 'slam_windup';
+              b.aiTimer = 0.60 / speedMul;
+            }
+          }
+        } else if (b.aiState === 'sweep_windup') {
+          b.aiTimer -= dt;
+          if (b.aiTimer <= 0) {
+            b.aiState = 'sweep_strike';
+            b.aiTimer = 0.16;
+            AudioSys.playSlash(3);
+            state.vfx.slashes.push({ x: b.x + b.facing * 44, y: b.y - 54, facing: b.facing, step: 3, radius: 98, life: 0.24, maxLife: 0.24 });
+          }
+        } else if (b.aiState === 'sweep_strike') {
+          if (!b.attackHitDone) {
+            const sb = { x: b.facing > 0 ? b.x : b.x - 135, y: b.y - 100, w: 135, h: 100 };
+            const pb = { x: p.x - p.w * 0.5, y: p.y - p.h, w: p.w, h: p.h };
+            if (rectsOverlap(sb, pb)) {
+              damagePlayer(15, b.x);
+              b.attackHitDone = true;
+            }
+          }
+          b.aiTimer -= dt;
+          if (b.aiTimer <= 0) { b.aiState = 'recover'; b.aiTimer = 0.62 / speedMul; }
+        } else if (b.aiState === 'slam_windup') {
+          b.facing = dx >= 0 ? 1 : -1;
+          b.aiTimer -= dt;
+          if (b.aiTimer <= 0) {
+            b.aiState = 'slam_strike';
+            b.aiTimer = 0.18;
+            AudioSys.playBossSlam();
+            addScreenShake(9, 0.28);
+            spawnDust(b.x + b.facing * 52, FLOOR_Y, 16);
+            // 释放地面青白震荡波（一阶段单向，二阶段左右双向）
+            const dirs = b.phase === 2 ? [-1, 1] : [b.facing];
+            for (const d of dirs) {
+              state.shockwaves.push({
+                x: b.x + d * 48, y: FLOOR_Y, dir: d,
+                speed: b.phase === 2 ? 410 : 350, w: 38, h: 36, life: 2.2
+              });
+            }
+          }
+        } else if (b.aiState === 'slam_strike') {
+          if (!b.attackHitDone) {
+            const sb = { x: b.facing > 0 ? b.x - 10 : b.x - 125, y: b.y - 115, w: 135, h: 115 };
+            const pb = { x: p.x - p.w * 0.5, y: p.y - p.h, w: p.w, h: p.h };
+            if (rectsOverlap(sb, pb)) {
+              damagePlayer(25, b.x);
+              b.attackHitDone = true;
+            }
+          }
+          b.aiTimer -= dt;
+          if (b.aiTimer <= 0) { b.aiState = 'recover'; b.aiTimer = 0.80 / speedMul; }
+        } else {
+          b.aiTimer -= dt;
+          if (b.aiTimer <= 0) { b.aiState = 'march'; b.aiTimer = 1.05 / speedMul; }
+        }
+
+        // Boss 身体接触
+        if (Math.abs(p.x - b.x) < 46 && p.y > b.y - b.h + 15) {
+          damagePlayer(15, b.x);
+        }
+      }
+
+      function updateProjectilesAndWaves(dt) {
+        const p = state.player;
+        const pBox = { x: p.x - p.w * 0.5, y: p.y - p.h, w: p.w, h: p.h };
+
+        for (let i = state.projectiles.length - 1; i >= 0; i--) {
+          const pr = state.projectiles[i];
+          pr.life -= dt;
+          pr.x += pr.vx * dt;
+          pr.y += pr.vy * dt;
+          if (pr.life <= 0) { state.projectiles.splice(i, 1); continue; }
+
+          if (pr.deflected) {
+            pr.trail.push({ x: pr.x, y: pr.y });
+            if (pr.trail.length > 9) pr.trail.shift();
+            const pb = { x: pr.x - pr.r - 4, y: pr.y - pr.r - 4, w: (pr.r + 4) * 2, h: (pr.r + 4) * 2 };
+            const parryCfg = { damage: pr.dmg, isHeavy: true, knockback: 260 };
+            let hitTarget = false;
+            for (const e of state.enemies) {
+              if (e.dead) continue;
+              const eb = { x: e.x - e.w * 0.55, y: e.y - e.h - 4, w: e.w * 1.1, h: e.h + 8 };
+              if (rectsOverlap(pb, eb)) {
+                hitEnemy(e, parryCfg, Math.sign(pr.vx) || 1);
+                state.time.hitStop = Math.max(state.time.hitStop, 0.065);
+                addScreenShake(6.5, 0.16);
+                hitTarget = true;
+                break;
+              }
+            }
+            if (!hitTarget && state.boss && state.boss.active && !state.boss.dead) {
+              const b = state.boss;
+              const bb = { x: b.x - b.w * 0.5, y: b.y - b.h, w: b.w, h: b.h };
+              if (rectsOverlap(pb, bb)) {
+                hitBoss(b, parryCfg, Math.sign(pr.vx) || 1);
+                state.time.hitStop = Math.max(state.time.hitStop, 0.075);
+                addScreenShake(7.5, 0.18);
+                hitTarget = true;
+              }
+            }
+            if (hitTarget) state.projectiles.splice(i, 1);
+            continue;
+          }
+
+          const pb = { x: pr.x - pr.r, y: pr.y - pr.r, w: pr.r * 2, h: pr.r * 2 };
+          // 木箱格挡光弹
+          let blocked = false;
+          for (const c of state.crates) {
+            if (c.broken) continue;
+            const cb = { x: c.x - c.w * 0.5, y: c.y - c.h, w: c.w, h: c.h };
+            if (rectsOverlap(pb, cb)) {
+              spawnHitVfx(pr.x, pr.y, -Math.sign(pr.vx), 0, false, '#67e8f9');
+              blocked = true;
+              break;
+            }
+          }
+          if (blocked) { state.projectiles.splice(i, 1); continue; }
+
+          if (rectsOverlap(pb, pBox)) {
+            damagePlayer(pr.dmg, pr.x);
+            state.projectiles.splice(i, 1);
+          }
+        }
+
+        // Boss 地面震荡波
+        for (let i = state.shockwaves.length - 1; i >= 0; i--) {
+          const sw = state.shockwaves[i];
+          sw.life -= dt;
+          sw.x += sw.dir * sw.speed * dt;
+          if (sw.life <= 0 || sw.x < BOSS_ARENA_LEFT || sw.x > BOSS_ARENA_RIGHT) {
+            state.shockwaves.splice(i, 1);
+            continue;
+          }
+          const sb = { x: sw.x - sw.w * 0.5, y: sw.y - sw.h, w: sw.w, h: sw.h };
+          if (rectsOverlap(sb, pBox)) {
+            damagePlayer(25, sw.x);
+          }
+        }
+      }
+
+      function updateOrbs(rawDt) {
+        if (state.goldPulse > 0) state.goldPulse = Math.max(0, state.goldPulse - rawDt);
+        if (state.coinComboTimer > 0) {
+          state.coinComboTimer -= rawDt;
+          if (state.coinComboTimer <= 0) state.coinCombo = 0;
+        }
+        const targetX = 36;
+        const targetY = 58;
+
+        for (let i = state.orbs.length - 1; i >= 0; i--) {
+          const o = state.orbs[i];
+          o.timer += rawDt;
+          if (o.phase === 'scatter') {
+            o.vy += 680 * rawDt;
+            o.wx += o.vx * rawDt;
+            o.wy += o.vy * rawDt;
+            if (o.wy >= o.floorY - 4) {
+              o.wy = o.floorY - 4;
+              o.vy = -Math.abs(o.vy) * 0.42;
+              o.vx *= 0.65;
+            }
+            if (o.timer >= o.scatterDur) {
+              o.phase = 'pause';
+              o.timer = 0;
+            }
+          } else if (o.phase === 'pause') {
+            if (o.timer >= o.pauseDur) {
+              o.phase = 'fly';
+              o.timer = 0;
+              o.sx = o.wx - state.camera.x;
+              o.sy = o.wy;
+              o.scrX = o.sx;
+              o.scrY = o.sy;
+              o.cx = (o.sx + targetX) * 0.5 + (Math.random() - 0.5) * 140;
+              o.cy = Math.min(o.sy, targetY) - 85 - Math.random() * 65;
+              o.trail = [{ x: o.scrX, y: o.scrY }];
+            }
+          } else {
+            const t = clamp(o.timer / o.flyDur, 0, 1);
+            const e = Easing.easeInQuad(t);
+            const omt = 1 - e;
+            o.scrX = omt * omt * o.sx + 2 * omt * e * o.cx + e * e * targetX;
+            o.scrY = omt * omt * o.sy + 2 * omt * e * o.cy + e * e * targetY;
+            o.trail.push({ x: o.scrX, y: o.scrY });
+            if (o.trail.length > 8) o.trail.shift();
+
+            if (t >= 1) {
+              state.gold += 1;
+              state.goldPulse = 0.16;
+              state.coinComboTimer = 0.55;
+              AudioSys.playCoin(state.coinCombo++);
+              state.orbs.splice(i, 1);
+            }
+          }
+        }
+      }
+
+      function updateVfx(dt) {
+        const v = state.vfx;
+        for (let i = v.slashes.length - 1; i >= 0; i--) {
+          v.slashes[i].life -= dt;
+          if (v.slashes[i].life <= 0) v.slashes.splice(i, 1);
+        }
+        for (let i = v.sparks.length - 1; i >= 0; i--) {
+          const s = v.sparks[i];
+          s.life -= dt;
+          s.x += s.vx * dt; s.y += s.vy * dt;
+          s.vx *= 0.92; s.vy += 320 * dt;
+          if (s.life <= 0) v.sparks.splice(i, 1);
+        }
+        for (let i = v.rings.length - 1; i >= 0; i--) {
+          v.rings[i].life -= dt;
+          if (v.rings[i].life <= 0) v.rings.splice(i, 1);
+        }
+        for (let i = v.dust.length - 1; i >= 0; i--) {
+          const d = v.dust[i];
+          d.life -= dt;
+          d.x += d.vx * dt; d.y += d.vy * dt;
+          if (d.life <= 0) v.dust.splice(i, 1);
+        }
+        for (let i = v.debris.length - 1; i >= 0; i--) {
+          const d = v.debris[i];
+          d.life -= dt;
+          d.vy += 760 * dt;
+          d.x += d.vx * dt; d.y += d.vy * dt;
+          d.rot += d.vrot * dt;
+          if (d.life <= 0) v.debris.splice(i, 1);
+        }
+        for (let i = v.dmgNums.length - 1; i >= 0; i--) {
+          const n = v.dmgNums[i];
+          n.life -= dt;
+          n.x += n.vx * dt; n.y += n.vy * dt;
+          n.vy += 260 * dt;
+          if (n.life <= 0) v.dmgNums.splice(i, 1);
+        }
+        for (let i = v.afterimages.length - 1; i >= 0; i--) {
+          v.afterimages[i].life -= dt;
+          if (v.afterimages[i].life <= 0) v.afterimages.splice(i, 1);
+        }
+      }
+
+      function updateCamera(rawDt) {
+        const cam = state.camera;
+        const p = state.player;
+        const targetX = cam.bossLocked
+          ? BOSS_ARENA_LEFT - 12
+          : clamp(p.x - VIEW_W * 0.38 + p.facing * 55, 0, WORLD_W - VIEW_W);
+        cam.x = lerp(cam.x, targetX, Math.min(1, rawDt * 7.5));
+
+        if (cam.shakeTime > 0) {
+          cam.shakeTime = Math.max(0, cam.shakeTime - rawDt);
+          const mag = cam.shakeAmp * (cam.shakeTime / Math.max(0.001, cam.shakeDur));
+          const a = Math.random() * Math.PI * 2;
+          cam.shakeX = Math.cos(a) * mag;
+          cam.shakeY = Math.sin(a) * mag;
+        } else {
+          cam.shakeX = 0; cam.shakeY = 0; cam.shakeAmp = 0;
+        }
+      }
+
+      function updateGame(rawDt) {
+        state.elapsed += rawDt;
+        if (state.pitFade > 0) state.pitFade = Math.max(0, state.pitFade - rawDt);
+
+        // 背景孢子
+        for (const s of state.bgSpores) {
+          s.y -= s.vy * rawDt;
+          if (s.y < -10) { s.y = VIEW_H - 40; s.x = Math.random() * VIEW_W; }
+        }
+
+        // 顿帧与重击快慢帧
+        if (state.time.hitStop > 0) {
+          state.time.hitStop = Math.max(0, state.time.hitStop - rawDt);
+          updateCamera(rawDt);
+          updateOrbs(rawDt);
+          return;
+        }
+
+        if (state.time.slowTimer > 0) {
+          state.time.slowTimer = Math.max(0, state.time.slowTimer - rawDt);
+          const prog = 1 - state.time.slowTimer / Math.max(0.001, state.time.slowDur);
+          state.time.scale = lerp(0.18, 1.0, Easing.easeInCubic(prog));
+        } else {
+          state.time.scale = 1.0;
+        }
+
+        const dt = rawDt * state.time.scale;
+        if (state.mode === 'playing') {
+          state.runTime += rawDt;
+          if (state.bossGateClosed && state.bossGateDrop < 1) {
+            state.bossGateDrop = Math.min(1, state.bossGateDrop + dt / 0.16);
+            if (state.bossGateDrop >= 1 && !state.bossGateSlammed) {
+              state.bossGateSlammed = true;
+              addScreenShake(9, 0.28);
+              AudioSys.playBossSlam();
+              spawnDust(BOSS_ARENA_LEFT - 4, FLOOR_Y, 14);
+            }
+          }
+          updatePlayer(dt);
+          updateFragilesAndShrines(dt);
+          updateCratesAndFruits(dt);
+          updateEnemies(dt);
+          updateBoss(dt);
+          updateProjectilesAndWaves(dt);
+        }
+
+        updateVfx(dt);
+        updateOrbs(rawDt);
+        updateCamera(rawDt);
+      }
+
+      /* ============================================================
+         9. 暗黑童话渲染系统（自动无缝切换自定义美术素材）
+         ============================================================ */
+      function drawBackground() {
+        const bgAsset = AssetManager.get('bg_forest');
+        if (bgAsset && bgAsset.canvas) {
+          const scaleH = VIEW_H / Math.max(1, bgAsset.h);
+          const drawW = Math.max(VIEW_W, bgAsset.w * scaleH);
+          const scrollX = (state.camera.x * 0.28) % (drawW * 2);
+          ctx.save();
+          // 无缝镜像平铺
+          for (let i = -1; i <= 2; i++) {
+            const x = i * drawW - scrollX;
+            if (x > VIEW_W + 40 || x + drawW < -40) continue;
+            ctx.save();
+            if (Math.abs(i) % 2 === 1) {
+              ctx.translate(x + drawW, 0);
+              ctx.scale(-1, 1);
+              ctx.drawImage(bgAsset.canvas, 0, 0, drawW + 1, VIEW_H);
+            } else {
+              ctx.drawImage(bgAsset.canvas, x, 0, drawW + 1, VIEW_H);
+            }
+            ctx.restore();
+          }
+          ctx.fillStyle = 'rgba(5, 11, 16, 0.28)';
+          ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+          ctx.restore();
+        } else {
+          // 默认暗黑童话森林遗迹多层视差
+          const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+          sky.addColorStop(0, '#071118');
+          sky.addColorStop(0.55, '#0f222c');
+          sky.addColorStop(1, '#08131a');
+          ctx.fillStyle = sky;
+          ctx.fillRect(-30, -30, VIEW_W + 60, VIEW_H + 60);
+
+          // 体积光束
+          ctx.save();
+          for (let i = 0; i < 4; i++) {
+            const bx = ((i * 340 - state.camera.x * 0.14) % (VIEW_W + 360) + (VIEW_W + 360)) % (VIEW_W + 360) - 120;
+            const g = ctx.createLinearGradient(bx, 0, bx + 90, VIEW_H);
+            g.addColorStop(0, 'rgba(120, 220, 225, 0.085)');
+            g.addColorStop(1, 'rgba(120, 220, 225, 0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(bx, 0); ctx.lineTo(bx + 75, 0);
+            ctx.lineTo(bx + 185, VIEW_H); ctx.lineTo(bx + 55, VIEW_H);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+
+          // 远景古树与巨型古铜吊钟剪影
+          const farShift = state.camera.x * 0.22;
+          ctx.fillStyle = '#09151d';
+          for (let i = 0; i < 16; i++) {
+            const tx = ((i * 155 - farShift) % (VIEW_W + 280) + (VIEW_W + 280)) % (VIEW_W + 280) - 100;
+            const tw = 26 + (i % 3) * 14;
+            ctx.fillRect(tx, 0, tw, VIEW_H);
+            if (i % 4 === 2) {
+              // 远景悬垂古铜钟
+              ctx.strokeStyle = '#182c36';
+              ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.moveTo(tx + tw + 44, 0); ctx.lineTo(tx + tw + 44, 115); ctx.stroke();
+              ctx.fillStyle = '#10212b';
+              ctx.beginPath();
+              ctx.arc(tx + tw + 44, 145, 28, Math.PI, 0);
+              ctx.lineTo(tx + tw + 78, 185);
+              ctx.lineTo(tx + tw + 10, 185);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = '#09151d';
+            }
+          }
+        }
+
+        // 漂浮发光微光孢子
+        for (const s of state.bgSpores) {
+          const sx = s.x + Math.sin(state.elapsed * 1.4 + s.phase) * 12;
+          ctx.fillStyle = `rgba(186, 250, 245, ${s.alpha})`;
+          ctx.beginPath();
+          ctx.arc(sx, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawTerrainAndGates() {
+        const viewL = state.camera.x - 100;
+        const viewR = state.camera.x + VIEW_W + 100;
+
+        const groundTile = AssetManager.get('tile_ground');
+        const solidTile = AssetManager.get('tile_solid');
+        const stairTile = AssetManager.get('tile_stair');
+        const suspendTile = AssetManager.get('tile_suspend');
+        const onewayTile = AssetManager.get('tile_oneway');
+        const fragileTile = AssetManager.get('tile_fragile');
+        const shrineTile = AssetManager.get('tile_shrine');
+
+        // 1. 实心平地、独立高台、四级石阶、悬浮跳台与单向铁艺踏板
+        for (const pl of state.platforms) {
+          const cullW = pl.stairRoot ? 196 : pl.w;
+          if (pl.x + cullW < viewL || pl.x > viewR) continue;
+
+          if (pl.type === 'oneway') {
+            if (onewayTile && onewayTile.canvas) {
+              ctx.drawImage(onewayTile.canvas, pl.x - 4, pl.y - 3, pl.w + 8, Math.max(24, pl.h * 2.2));
+            } else {
+              ctx.fillStyle = '#1d2d37';
+              ctx.fillRect(pl.x, pl.y, pl.w, pl.h);
+              ctx.strokeStyle = '#64838d';
+              ctx.lineWidth = 1.5;
+              ctx.strokeRect(pl.x, pl.y, pl.w, pl.h);
+              ctx.fillStyle = '#99d5de';
+              ctx.fillRect(pl.x + 2, pl.y, pl.w - 4, 2.5);
+              ctx.strokeStyle = 'rgba(130, 170, 180, 0.45)';
+              ctx.lineWidth = 1.2;
+              for (let gx = pl.x + 16; gx < pl.x + pl.w - 10; gx += 22) {
+                ctx.beginPath(); ctx.moveTo(gx, pl.y + 2); ctx.lineTo(gx, pl.y + pl.h); ctx.stroke();
+              }
+            }
+          } else if (pl.stair) {
+            if (stairTile && stairTile.canvas) {
+              if (pl.stairRoot) ctx.drawImage(stairTile.canvas, pl.x - 4, FLOOR_Y - 90, 192, 94);
+            } else {
+              const grad = ctx.createLinearGradient(0, pl.y, 0, pl.y + pl.h);
+              grad.addColorStop(0, '#364d53'); grad.addColorStop(1, '#142026');
+              ctx.fillStyle = grad;
+              ctx.fillRect(pl.x, pl.y, pl.w, pl.h);
+              ctx.fillStyle = '#52785c'; ctx.fillRect(pl.x, pl.y, pl.w, 5);
+              ctx.fillStyle = '#8ec098'; ctx.fillRect(pl.x + 1, pl.y, pl.w - 2, 2);
+              ctx.strokeStyle = '#0f1720'; ctx.lineWidth = 1.6;
+              ctx.strokeRect(pl.x, pl.y, pl.w, pl.h);
+            }
+          } else {
+            if (pl.suspended && suspendTile && suspendTile.canvas) {
+              const aspectH = Math.max(pl.h + 18, (suspendTile.h / Math.max(1, suspendTile.w)) * pl.w);
+              ctx.drawImage(suspendTile.canvas, pl.x - 6, pl.y - 4, pl.w + 12, Math.min(aspectH, 92));
+            } else if (pl.ground && groundTile && groundTile.canvas) {
+              const grad = ctx.createLinearGradient(0, pl.y, 0, pl.y + Math.min(pl.h, 150));
+              grad.addColorStop(0, '#1a2a30'); grad.addColorStop(1, '#080e14');
+              ctx.fillStyle = grad;
+              ctx.fillRect(pl.x, pl.y + 10, pl.w, Math.max(0, pl.h - 10));
+
+              const tileH = Math.max(pl.h + 6, 116);
+              const segW = Math.max(140, Math.round((groundTile.w / Math.max(1, groundTile.h)) * tileH));
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(pl.x - 2, pl.y - 10, pl.w + 4, pl.h + 24);
+              ctx.clip();
+              for (let tx = pl.x; tx < pl.x + pl.w; tx += segW - 4) {
+                ctx.drawImage(groundTile.canvas, tx, pl.y - 5, segW, tileH);
+              }
+              ctx.restore();
+            } else if (!pl.ground && solidTile && solidTile.canvas) {
+              const aspectH = Math.max(pl.h + 14, (solidTile.h / Math.max(1, solidTile.w)) * pl.w);
+              ctx.drawImage(solidTile.canvas, pl.x - 5, pl.y - 4, pl.w + 10, Math.min(aspectH, 68));
+            } else {
+              const grad = ctx.createLinearGradient(0, pl.y, 0, pl.y + Math.min(pl.h, 120));
+              grad.addColorStop(0, '#33494f'); grad.addColorStop(0.28, '#203138'); grad.addColorStop(1, '#0e171d');
+              ctx.fillStyle = grad;
+              ctx.fillRect(pl.x, pl.y, pl.w, pl.h);
+              ctx.strokeStyle = '#121e24'; ctx.lineWidth = 1.5;
+              for (let sx = pl.x + 48; sx < pl.x + pl.w - 12; sx += 56) {
+                ctx.beginPath();
+                ctx.moveTo(sx, pl.y + 4); ctx.lineTo(sx - 6, pl.y + 24);
+                ctx.lineTo(sx + 4, pl.y + Math.min(pl.h, 58));
+                ctx.stroke();
+              }
+              ctx.fillStyle = '#4c7056'; ctx.fillRect(pl.x, pl.y, pl.w, 6);
+              ctx.fillStyle = '#84b38e'; ctx.fillRect(pl.x + 2, pl.y, pl.w - 4, 2);
+              ctx.strokeStyle = '#101820'; ctx.lineWidth = 1.8;
+              ctx.strokeRect(pl.x, pl.y, pl.w, pl.h);
+            }
+          }
+        }
+
+        // 2. 易碎再生地块
+        for (const fr of state.fragiles) {
+          if (fr.x + fr.w < viewL || fr.x > viewR) continue;
+          ctx.save();
+          if (fr.state === 'broken') {
+            const prog = 1 - fr.timer / 2.6;
+            ctx.strokeStyle = `rgba(103, 232, 249, ${0.28 + prog * 0.45})`;
+            ctx.setLineDash([6, 5]);
+            ctx.lineWidth = 1.6;
+            ctx.strokeRect(fr.x, fr.y, fr.w, fr.h);
+            ctx.fillStyle = 'rgba(103, 232, 249, 0.14)';
+            ctx.fillRect(fr.x, fr.y, fr.w * prog, fr.h);
+          } else {
+            const jx = fr.state === 'shaking' ? (Math.random() - 0.5) * 6 : 0;
+            const jy = fr.state === 'shaking' ? (Math.random() - 0.5) * 3 : 0;
+            if (fragileTile && fragileTile.canvas) {
+              ctx.drawImage(fragileTile.canvas, fr.x + jx - 4, fr.y + jy - 4, fr.w + 8, Math.max(fr.h + 14, 38));
+            } else {
+              ctx.fillStyle = fr.state === 'shaking' ? '#3a545d' : '#2a3d45';
+              ctx.fillRect(fr.x + jx, fr.y + jy, fr.w, fr.h);
+              ctx.strokeStyle = fr.state === 'shaking' ? '#a5f3fc' : '#67e8f9';
+              ctx.lineWidth = fr.state === 'shaking' ? 2.2 : 1.3;
+              ctx.beginPath();
+              ctx.moveTo(fr.x + jx + 22, fr.y + jy + 2);
+              ctx.lineTo(fr.x + jx + fr.w * 0.48, fr.y + jy + fr.h * 0.65);
+              ctx.lineTo(fr.x + jx + fr.w - 20, fr.y + jy + 4);
+              ctx.stroke();
+              ctx.strokeStyle = '#0e171f';
+              ctx.strokeRect(fr.x + jx, fr.y + jy, fr.w, fr.h);
+            }
+          }
+          ctx.restore();
+        }
+
+        // 3. 回血祭坛
+        for (const sh of state.shrines) {
+          if (sh.x + sh.w < viewL || sh.x - sh.w > viewR) continue;
+          ctx.save();
+          const active = sh.pool > 0;
+          if (active) {
+            const g = ctx.createRadialGradient(sh.x, sh.y - 18, 4, sh.x, sh.y - 18, 56);
+            g.addColorStop(0, 'rgba(253, 224, 71, 0.36)');
+            g.addColorStop(1, 'rgba(253, 224, 71, 0)');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(sh.x, sh.y - 18, 56, 0, Math.PI * 2); ctx.fill();
+          }
+          if (shrineTile && shrineTile.canvas) {
+            const dw = 114;
+            const dh = (shrineTile.h / Math.max(1, shrineTile.w)) * dw;
+            ctx.globalAlpha = active ? 1 : 0.45;
+            ctx.drawImage(shrineTile.canvas, sh.x - dw * 0.5, sh.y - dh + 10, dw, dh);
+          } else {
+            ctx.fillStyle = '#2a3c42';
+            ctx.fillRect(sh.x - sh.w * 0.5, sh.y - 10, sh.w, 12);
+            ctx.strokeStyle = active ? '#e6c687' : '#475569';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(sh.x - sh.w * 0.5, sh.y - 10, sh.w, 12);
+            // 发光治疗花朵
+            for (const ox of [-24, 0, 24]) {
+              ctx.fillStyle = active ? '#fef08a' : '#475569';
+              ctx.beginPath(); ctx.arc(sh.x + ox, sh.y - 18, active ? 5 : 3.5, 0, Math.PI * 2); ctx.fill();
+            }
+          }
+          ctx.fillStyle = active ? '#fde047' : '#94a3b8';
+          ctx.font = '700 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(active ? (sh.fullOnce ? '满额回血祭坛' : `回血祭坛 (${Math.ceil(sh.pool)})`) : '充能中...', sh.x, sh.y - 34);
+          ctx.restore();
+        }
+
+        // 4. Boss 房砸落石门
+        if (state.bossGateClosed) {
+          const bossGateAsset = AssetManager.get('gate_boss');
+          const gateH = FLOOR_Y - 120;
+          const dropEase = Easing.easeInQuad(clamp(state.bossGateDrop, 0, 1));
+          const gateTopY = lerp(120 - gateH - 40, 120, dropEase);
+          ctx.save();
+          if (bossGateAsset && bossGateAsset.canvas) {
+            const drawH = gateH + 10;
+            const drawW = clamp((bossGateAsset.w / Math.max(1, bossGateAsset.h)) * drawH, 34, 92);
+            ctx.drawImage(bossGateAsset.canvas, BOSS_ARENA_LEFT - drawW * 0.5 - 4, gateTopY - 4, drawW, drawH);
+          } else {
+            const gxGate = BOSS_ARENA_LEFT - 16, gwGate = 24;
+            const gg = ctx.createLinearGradient(gxGate, gateTopY, gxGate + gwGate, gateTopY);
+            gg.addColorStop(0, '#1e2b33'); gg.addColorStop(0.5, '#3b4e57'); gg.addColorStop(1, '#141d24');
+            ctx.fillStyle = gg; ctx.fillRect(gxGate, gateTopY, gwGate, gateH);
+            ctx.strokeStyle = '#0b1116'; ctx.lineWidth = 2; ctx.strokeRect(gxGate, gateTopY, gwGate, gateH);
+            ctx.fillStyle = '#8f6b32';
+            for (let ry = gateTopY + 36; ry < gateTopY + gateH - 20; ry += 68) ctx.fillRect(gxGate + 2, ry, gwGate - 4, 7);
+          }
+          ctx.restore();
+        }
+
+        // 5. 通关之门（封锁 / 开启双状态）
+        const gx = 6925;
+        const exitClosedAsset = AssetManager.get('gate_exit_closed');
+        const exitOpenAsset = AssetManager.get('gate_exit_open');
+        ctx.save();
+        if (state.victoryGateOpen && exitOpenAsset && exitOpenAsset.canvas) {
+          const pg = ctx.createRadialGradient(gx, FLOOR_Y - 64, 10, gx, FLOOR_Y - 64, 74);
+          pg.addColorStop(0, 'rgba(254, 249, 195, 0.75)');
+          pg.addColorStop(0.55, 'rgba(103, 232, 249, 0.42)');
+          pg.addColorStop(1, 'rgba(56, 189, 248, 0)');
+          ctx.fillStyle = pg;
+          ctx.beginPath(); ctx.arc(gx, FLOOR_Y - 64, 74, 0, Math.PI * 2); ctx.fill();
+          const dh = 152, dw = (exitOpenAsset.w / Math.max(1, exitOpenAsset.h)) * dh;
+          ctx.drawImage(exitOpenAsset.canvas, gx - dw * 0.5, FLOOR_Y - dh + 4, dw, dh);
+        } else if (!state.victoryGateOpen && exitClosedAsset && exitClosedAsset.canvas) {
+          const dh = 152, dw = (exitClosedAsset.w / Math.max(1, exitClosedAsset.h)) * dh;
+          ctx.drawImage(exitClosedAsset.canvas, gx - dw * 0.5, FLOOR_Y - dh + 4, dw, dh);
+        } else {
+          ctx.fillStyle = state.victoryGateOpen ? '#15343f' : '#111922';
+          ctx.beginPath();
+          ctx.moveTo(gx - 34, FLOOR_Y);
+          ctx.lineTo(gx - 34, FLOOR_Y - 82);
+          ctx.quadraticCurveTo(gx, FLOOR_Y - 134, gx + 34, FLOOR_Y - 82);
+          ctx.lineTo(gx + 34, FLOOR_Y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = state.victoryGateOpen ? '#fde047' : '#475569';
+          ctx.lineWidth = 3; ctx.stroke();
+          if (!state.victoryGateOpen) {
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
+            for (const ox of [-16, 0, 16]) {
+              ctx.beginPath(); ctx.moveTo(gx + ox, FLOOR_Y - 94); ctx.lineTo(gx + ox, FLOOR_Y); ctx.stroke();
+            }
+          } else {
+            const pg = ctx.createRadialGradient(gx, FLOOR_Y - 54, 6, gx, FLOOR_Y - 54, 48);
+            pg.addColorStop(0, '#fef9c3'); pg.addColorStop(0.5, 'rgba(103, 232, 249, 0.65)'); pg.addColorStop(1, 'rgba(56, 189, 248, 0)');
+            ctx.fillStyle = pg;
+            ctx.beginPath(); ctx.arc(gx, FLOOR_Y - 54, 48, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+
+      function drawProps() {
+        const crateAsset = AssetManager.get('prop_crate');
+        const potAsset = AssetManager.get('prop_pot');
+        const fruitAsset = AssetManager.get('prop_fruit');
+
+        for (const c of state.crates) {
+          if (c.broken) continue;
+          ctx.save();
+          if (crateAsset && crateAsset.canvas) {
+            const img = c.flash > 0 ? crateAsset.white : crateAsset.canvas;
+            ctx.drawImage(img, c.x - c.w * 0.5 - 2, c.y - c.h - 2, c.w + 4, c.h + 4);
+          } else {
+            ctx.fillStyle = c.flash > 0 ? '#ffffff' : '#6c492d';
+            ctx.fillRect(c.x - c.w * 0.5, c.y - c.h, c.w, c.h);
+            ctx.strokeStyle = '#24170e'; ctx.lineWidth = 2;
+            ctx.strokeRect(c.x - c.w * 0.5, c.y - c.h, c.w, c.h);
+            ctx.beginPath();
+            ctx.moveTo(c.x - c.w * 0.5, c.y - c.h); ctx.lineTo(c.x + c.w * 0.5, c.y);
+            ctx.moveTo(c.x + c.w * 0.5, c.y - c.h); ctx.lineTo(c.x - c.w * 0.5, c.y);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        for (const pot of state.pots) {
+          if (pot.broken) continue;
+          ctx.save();
+          if (potAsset && potAsset.canvas) {
+            const img = pot.flash > 0 ? potAsset.white : potAsset.canvas;
+            ctx.drawImage(img, pot.x - pot.w * 0.55, pot.y - pot.h - 2, pot.w * 1.1, pot.h + 4);
+          } else {
+            ctx.fillStyle = pot.flash > 0 ? '#ffffff' : '#4a5d66';
+            ctx.beginPath();
+            ctx.ellipse(pot.x, pot.y - 13, 13, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#152028'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = pot.flash > 0 ? '#ffffff' : '#687f8a';
+            ctx.fillRect(pot.x - 8, pot.y - 30, 16, 5);
+          }
+          ctx.restore();
+        }
+
+        for (const f of state.fruits) {
+          const fy = f.y + Math.sin(f.bob) * 3;
+          ctx.save();
+          const g = ctx.createRadialGradient(f.x, fy, 1, f.x, fy, 18);
+          g.addColorStop(0, '#ecfeff');
+          g.addColorStop(0.5, 'rgba(74, 222, 128, 0.72)');
+          g.addColorStop(1, 'rgba(74, 222, 128, 0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(f.x, fy, 18, 0, Math.PI * 2); ctx.fill();
+          if (fruitAsset && fruitAsset.canvas) {
+            const dh = 24, dw = (fruitAsset.w / Math.max(1, fruitAsset.h)) * dh;
+            ctx.drawImage(fruitAsset.canvas, f.x - dw * 0.5, fy - dh * 0.5, dw, dh);
+          } else {
+            ctx.fillStyle = '#86efac';
+            ctx.beginPath(); ctx.arc(f.x, fy, 6, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawMiniHpBar(x, y, w, hp, whiteHp, maxHp, shakeTimer) {
+        const sx = shakeTimer > 0 ? Math.sin(state.elapsed * 95) * 3.5 : 0;
+        const bx = x - w * 0.5 + sx;
+        ctx.fillStyle = 'rgba(8, 14, 20, 0.85)';
+        ctx.fillRect(bx - 1, y - 1, w + 2, 7);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(bx, y, w * clamp(whiteHp / maxHp, 0, 1), 5);
+        ctx.fillStyle = '#e11d48';
+        ctx.fillRect(bx, y, w * clamp(hp / maxHp, 0, 1), 5);
+      }
+
+      function drawSheetFrame(sheet, frameIdx, x, y, targetH, facing, isFlash) {
+        if (!sheet || !sheet.frames || sheet.frames.length === 0) return false;
+        const f = sheet.frames[frameIdx % sheet.frames.length];
+        const drawH = targetH;
+        const drawW = (f.w / Math.max(1, f.h)) * drawH;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(facing, 1);
+        if (isFlash) {
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = 12;
+          ctx.drawImage(f.white, -drawW * 0.5, -drawH, drawW, drawH);
+        } else {
+          ctx.drawImage(f.canvas, -drawW * 0.5, -drawH, drawW, drawH);
+        }
+        ctx.restore();
+        return true;
+      }
+
+      function drawEnemiesAndBoss() {
+        for (const e of state.enemies) {
+          if (e.dead) continue;
+          ctx.save();
+          // 底部锁锚果冻挤压变形
+          let sx = 1, sy = 1;
+          if (e.squashTimer > 0) {
+            const prog = 1 - e.squashTimer / 0.40;
+            const wave = Math.cos(prog * Math.PI * 2.5) * Math.exp(-prog * 3.2);
+            sx = 1 - wave * 0.24;
+            sy = 1 + wave * 0.26;
+          }
+          ctx.translate(e.x, e.y);
+          ctx.scale(sx, sy);
+
+          if (e.kind === 'beetle') {
+            const sheet = AssetManager.get(e.aiState === 'charge' || e.aiState === 'windup' ? 'beetle_attack' : 'beetle_walk');
+            const idx = Math.floor(e.animTime * 10);
+            if (!drawSheetFrame(sheet, idx, 0, 0, 56, e.facing, e.flash > 0)) {
+              ctx.scale(e.facing, 1);
+              if (e.flash > 0) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 14; }
+              // 黑色底身与四足
+              const walk = Math.sin(e.animTime * 12) * 3;
+              ctx.fillStyle = e.flash > 0 ? '#ffffff' : '#090d11';
+              ctx.beginPath(); ctx.ellipse(0, -14, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
+              for (const lx of [-16, -6, 6, 15]) {
+                ctx.fillRect(lx - 2, -8, 4, 8 + (lx > 0 ? walk : -walk) * 0.5);
+              }
+              // 苔石穹顶甲壳
+              ctx.fillStyle = e.flash > 0 ? '#ffffff' : '#4a6566';
+              ctx.beginPath(); ctx.arc(0, -16, 25, Math.PI, 0); ctx.closePath(); ctx.fill();
+              ctx.strokeStyle = '#101a20'; ctx.lineWidth = 2; ctx.stroke();
+              // 青苔与发光孢子花
+              if (e.flash <= 0) {
+                ctx.fillStyle = '#5c8459';
+                ctx.beginPath(); ctx.ellipse(-7, -38, 12, 5, -0.2, 0, Math.PI * 2); ctx.fill();
+                const budGlow = e.aiState === 'windup' ? '#fde047' : '#e0f2fe';
+                ctx.fillStyle = budGlow;
+                ctx.beginPath(); ctx.arc(-11, -48, 3.8, 0, Math.PI * 2); ctx.arc(-2, -45, 3, 0, Math.PI * 2); ctx.fill();
+              }
+              // 表情（正常圆眼 / 受击 > <）
+              ctx.strokeStyle = e.flash > 0 ? '#0f172a' : '#e0f2fe';
+              ctx.fillStyle = e.flash > 0 ? '#0f172a' : '#e0f2fe';
+              if (e.hurtExpr > 0) {
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(8, -17); ctx.lineTo(13, -14); ctx.lineTo(8, -11);
+                ctx.moveTo(20, -17); ctx.lineTo(15, -14); ctx.lineTo(20, -11);
+                ctx.stroke();
+              } else {
+                ctx.beginPath(); ctx.arc(11, -14, 2.8, 0, Math.PI * 2); ctx.arc(19, -14, 2.5, 0, Math.PI * 2); ctx.fill();
+              }
+            }
+          } else {
+            const sheet = AssetManager.get(e.aiState === 'charge' ? 'wisp_attack' : 'wisp_walk');
+            const idx = Math.floor(e.animTime * 10);
+            if (!drawSheetFrame(sheet, idx, 0, 0, 58, e.facing, e.flash > 0)) {
+              ctx.scale(e.facing, 1);
+              if (e.flash > 0) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 14; }
+              const flap = Math.sin(e.animTime * 11) * 10;
+              // 破损蛾翼
+              ctx.fillStyle = e.flash > 0 ? '#ffffff' : 'rgba(122, 152, 158, 0.72)';
+              ctx.beginPath(); ctx.moveTo(-4, -26); ctx.quadraticCurveTo(-26, -42 + flap, -22, -16); ctx.closePath(); ctx.fill();
+              ctx.beginPath(); ctx.moveTo(4, -26); ctx.quadraticCurveTo(24, -40 - flap, 20, -16); ctx.closePath(); ctx.fill();
+              // 古铜残铃壳
+              ctx.fillStyle = e.flash > 0 ? '#ffffff' : '#6c624b';
+              ctx.beginPath(); ctx.arc(0, -24, 15, Math.PI, 0); ctx.lineTo(17, -10); ctx.lineTo(-17, -10); ctx.closePath(); ctx.fill();
+              ctx.strokeStyle = '#161b20'; ctx.lineWidth = 1.8; ctx.stroke();
+              // 钟内蓄力光点
+              ctx.fillStyle = e.aiState === 'charge' ? '#fde047' : '#a5f3fc';
+              ctx.beginPath(); ctx.arc(0, -11, e.aiState === 'charge' ? 6 : 4, 0, Math.PI * 2); ctx.fill();
+            }
+          }
+          ctx.restore();
+
+          if (e.hp < e.maxHp) {
+            drawMiniHpBar(e.x, e.y - e.h - 14, 46, e.hp, e.whiteHp, e.maxHp, e.hpShake);
+          }
+        }
+
+        // Boss：朽钟守林巨像
+        const b = state.boss;
+        if (b && !b.dead) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          const isAtk = b.aiState.includes('windup') || b.aiState.includes('strike');
+          const bSheet = AssetManager.get(isAtk ? 'boss_attack' : 'boss_walk');
+          const idx = Math.floor(b.animTime * (isAtk ? 12 : 8));
+          if (!drawSheetFrame(bSheet, idx, 0, 0, 152, b.facing, b.flash > 0)) {
+            ctx.scale(b.facing, 1);
+            if (b.flash > 0) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 18; }
+            const bob = Math.sin(b.animTime * 5) * 3;
+            // 披风与苔石重甲身躯
+            ctx.fillStyle = b.flash > 0 ? '#ffffff' : '#1b2b33';
+            ctx.beginPath();
+            ctx.moveTo(-36, 0); ctx.lineTo(-42, -88 + bob); ctx.lineTo(42, -88 + bob); ctx.lineTo(36, 0);
+            ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = '#091015'; ctx.lineWidth = 2.5; ctx.stroke();
+
+            // 巨型古铜钟盔
+            ctx.fillStyle = b.flash > 0 ? '#ffffff' : (b.phase === 2 ? '#8f723f' : '#6f5c3a');
+            ctx.beginPath();
+            ctx.arc(0, -96 + bob, 32, Math.PI, 0);
+            ctx.lineTo(38, -66 + bob); ctx.lineTo(-38, -66 + bob);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+
+            // 发光巨眼
+            ctx.fillStyle = b.phase === 2 ? '#fde047' : '#67e8f9';
+            ctx.beginPath(); ctx.arc(12, -74 + bob, 4.5, 0, Math.PI * 2); ctx.arc(24, -74 + bob, 4, 0, Math.PI * 2); ctx.fill();
+
+            // 荆棘大剑（蓄力高举）
+            ctx.save();
+            ctx.translate(22, -62 + bob);
+            const swordAng = b.aiState === 'slam_windup' ? -2.25 : (b.aiState === 'slam_strike' ? 0.55 : (b.aiState === 'sweep_windup' ? -1.4 : 0.2));
+            ctx.rotate(swordAng);
+            ctx.fillStyle = b.aiState.includes('windup') ? '#fef08a' : '#8da3ad';
+            ctx.fillRect(0, -6, 86, 12);
+            ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.strokeRect(0, -6, 86, 12);
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawPlayerSprite(p, alpha = 1, tint = null) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(p.x, p.y);
+        ctx.scale(p.squashX, p.squashY);
+
+        let sheetKey = p.forceSheetKey || 'player_idle';
+        let frameIdx = Number.isInteger(p.forceFrameIdx) ? p.forceFrameIdx : Math.floor(p.animTime * 8);
+        if (!p.forceSheetKey) {
+          if (p.atkActive) {
+            sheetKey = 'player_attack';
+            const cfg = COMBO_CFG[p.atkStep];
+            const prog = p.atkPhase === 'windup'
+              ? (p.atkTimer / cfg.windup) * 0.3
+              : (p.atkPhase === 'slash' ? 0.3 + (p.atkTimer / cfg.slash) * 0.35 : 0.65 + (p.atkTimer / cfg.recovery) * 0.35);
+            frameIdx = clamp(Math.floor(prog * 10), 0, 9);
+          } else if (Math.abs(p.vx) > 25) {
+            sheetKey = 'player_run';
+            frameIdx = Math.floor(p.animTime * 14);
+          }
+        }
+
+        const sheet = AssetManager.get(sheetKey) || (tint ? (AssetManager.get('player_run') || AssetManager.get('player_idle')) : null);
+        if (sheet && sheet.frames && sheet.frames.length > 0) {
+          drawSheetFrame(sheet, frameIdx, 0, 0, 74, p.facing, Boolean(tint) || p.hurtFlash > 0.14);
+          ctx.restore();
+          return;
+        }
+
+        // 内置暗黑童话黑帽披风剑客矢量绘制（未导入图片时，tint 模式下同样绘制纯白剪影）
+        ctx.scale(p.facing, 1);
+        if (tint) {
+          ctx.shadowColor = 'rgba(255, 255, 255, 0.85)';
+          ctx.shadowBlur = 10;
+        }
+        const runBob = Math.abs(p.vx) > 25 && p.onGround ? Math.abs(Math.sin(p.animTime * 14)) * 3.5 : Math.sin(p.animTime * 3.5) * 1.5;
+
+        // 飘动蓝灰双尾围巾
+        ctx.fillStyle = tint || '#586d7a';
+        const wave = Math.sin(p.animTime * 10) * 5;
+        ctx.beginPath();
+        ctx.moveTo(-4, -36 - runBob);
+        ctx.quadraticCurveTo(-24, -38 - runBob + wave, -34, -29 - runBob - wave * 0.5);
+        ctx.lineTo(-10, -28 - runBob);
+        ctx.closePath(); ctx.fill();
+
+        // 双腿
+        const legSwing = Math.abs(p.vx) > 25 ? Math.sin(p.animTime * 16) * 8 : 0;
+        ctx.fillStyle = tint || '#090d11';
+        ctx.fillRect(-7 + legSwing * 0.5, -14, 5, 14);
+        ctx.fillRect(2 - legSwing * 0.5, -14, 5, 14);
+
+        // 破损米白斗篷
+        ctx.fillStyle = tint || '#c9c5b2';
+        ctx.beginPath();
+        ctx.moveTo(-10, -36 - runBob);
+        ctx.lineTo(10, -36 - runBob);
+        ctx.lineTo(15, -11 - runBob);
+        ctx.lineTo(5, -14 - runBob);
+        ctx.lineTo(-2, -10 - runBob);
+        ctx.lineTo(-16, -12 - runBob);
+        ctx.closePath(); ctx.fill();
+        if (!tint) { ctx.strokeStyle = '#141c22'; ctx.lineWidth = 1.6; ctx.stroke(); }
+
+        // 黑色头部与发光锐眼
+        ctx.fillStyle = tint || '#070a0e';
+        ctx.beginPath(); ctx.arc(1, -43 - runBob, 11, 0, Math.PI * 2); ctx.fill();
+        if (!tint) {
+          ctx.fillStyle = '#d6fcff';
+          ctx.shadowColor = '#67e8f9'; ctx.shadowBlur = 8;
+          ctx.beginPath(); ctx.ellipse(4, -43 - runBob, 2.3, 3.2, 0, 0, Math.PI * 2); ctx.ellipse(9.5, -43 - runBob, 2, 3, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        // 弯尖黑帽与古铜帽带
+        ctx.fillStyle = tint || '#1b222a';
+        ctx.beginPath();
+        ctx.moveTo(-19, -48 - runBob);
+        ctx.quadraticCurveTo(2, -55 - runBob, 22, -49 - runBob);
+        ctx.quadraticCurveTo(3, -44 - runBob, -19, -48 - runBob);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-9, -49 - runBob);
+        ctx.quadraticCurveTo(-14, -67 - runBob, -2, -70 - runBob);
+        ctx.quadraticCurveTo(-8, -73 - runBob, -18, -64 - runBob);
+        ctx.quadraticCurveTo(-4, -63 - runBob, 9, -49 - runBob);
+        ctx.closePath(); ctx.fill();
+        if (!tint) { ctx.strokeStyle = '#0a0f14'; ctx.lineWidth = 1.5; ctx.stroke(); }
+
+        // 暗钢长剑（攻击时身前挥舞，平时斜背）
+        if (!tint) {
+          ctx.save();
+          if (p.atkActive) {
+            ctx.translate(6, -30 - runBob);
+            const cfg = COMBO_CFG[p.atkStep];
+            let ang = -0.6;
+            if (p.atkPhase === 'windup') ang = p.atkStep === 2 ? 1.15 : -2.15;
+            else if (p.atkPhase === 'slash') {
+              const t = Easing.easeOutExpo(clamp(p.atkTimer / cfg.slash, 0, 1));
+              ang = p.atkStep === 2 ? lerp(1.15, -1.85, t) : lerp(-2.15, 0.95, t);
+            } else {
+              ang = p.atkStep === 2 ? -1.45 : 0.75;
+            }
+            ctx.rotate(ang);
+            ctx.fillStyle = p.atkStep === 3 ? '#fef08a' : '#cbd5e1';
+            ctx.fillRect(0, -2.5, 44, 5);
+            ctx.fillStyle = '#b48a4e';
+            ctx.fillRect(-3, -7, 5, 14);
+          } else {
+            ctx.translate(-8, -32 - runBob);
+            ctx.rotate(-2.3);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(-10, -2, 34, 4);
+          }
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+
+      // 冲刺纯白图片剪影拖尾（独立绘制在主角身后）
+      function drawAfterimages() {
+        const dashSingle = AssetManager.get('player_dash');
+        for (const g of state.vfx.afterimages) {
+          const ratio = clamp(g.life / g.maxLife, 0, 1);
+          const alpha = Easing.easeOutQuad(ratio) * 0.72;
+
+          if (dashSingle && dashSingle.white) {
+            const drawH = 74;
+            const drawW = (dashSingle.w / Math.max(1, dashSingle.h)) * drawH;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.translate(g.x, g.y);
+            ctx.scale(g.facing, 1);
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.85)';
+            ctx.shadowBlur = 10;
+            ctx.drawImage(dashSingle.white, -drawW * 0.5, -drawH, drawW, drawH);
+            ctx.restore();
+          } else {
+            drawPlayerSprite({
+              ...state.player,
+              x: g.x,
+              y: g.y,
+              vx: g.facing * 300,
+              facing: g.facing,
+              animTime: g.animTime ?? state.player.animTime,
+              forceSheetKey: g.sheetKey,
+              forceFrameIdx: g.frameIdx,
+              atkActive: false,
+              squashX: 1,
+              squashY: 1
+            }, alpha, '#ffffff');
+          }
+        }
+      }
+
+      function drawVfxWorld() {
+        const v = state.vfx;
+
+        // 弯月刀光
+        for (const s of v.slashes) {
+          const a = clamp(s.life / s.maxLife, 0, 1);
+          ctx.save();
+          ctx.translate(s.x, s.y);
+          ctx.scale(s.facing, s.step === 2 ? -1 : 1);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.strokeStyle = s.step === 3 ? `rgba(253, 224, 71, ${a})` : `rgba(103, 232, 249, ${a})`;
+          ctx.lineWidth = (s.step === 3 ? 16 : 11) * a;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(0, 0, s.radius, -1.35, 1.05);
+          ctx.stroke();
+          ctx.strokeStyle = `rgba(240, 253, 255, ${a})`;
+          ctx.lineWidth = 4 * a;
+          ctx.beginPath();
+          ctx.arc(0, 0, s.radius - 2, -1.2, 0.9);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 残铃浮灵光弹（含弹反金青尾迹）
+        for (const pr of state.projectiles) {
+          ctx.save();
+          if (pr.deflected && pr.trail && pr.trail.length >= 2) {
+            ctx.lineCap = 'round';
+            for (let t = 1; t < pr.trail.length; t++) {
+              const frac = t / (pr.trail.length - 1);
+              ctx.strokeStyle = `rgba(253, 224, 71, ${frac * 0.85})`;
+              ctx.lineWidth = pr.r * 1.45 * frac;
+              ctx.beginPath();
+              ctx.moveTo(pr.trail[t - 1].x, pr.trail[t - 1].y);
+              ctx.lineTo(pr.trail[t].x, pr.trail[t].y);
+              ctx.stroke();
+            }
+          }
+          const g = ctx.createRadialGradient(pr.x, pr.y, 1, pr.x, pr.y, pr.r * (pr.deflected ? 3.0 : 2.4));
+          g.addColorStop(0, '#ffffff');
+          g.addColorStop(0.42, pr.deflected ? '#fde047' : '#67e8f9');
+          g.addColorStop(1, pr.deflected ? 'rgba(250, 204, 21, 0)' : 'rgba(56, 189, 248, 0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r * (pr.deflected ? 3.0 : 2.4), 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+
+        // Boss 地面震荡波
+        for (const sw of state.shockwaves) {
+          ctx.save();
+          ctx.translate(sw.x, sw.y);
+          ctx.scale(sw.dir, 1);
+          const g = ctx.createLinearGradient(0, -sw.h, 0, 0);
+          g.addColorStop(0, '#ecfeff');
+          g.addColorStop(0.5, '#38bdf8');
+          g.addColorStop(1, 'rgba(56, 189, 248, 0.15)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.moveTo(-22, 0);
+          ctx.quadraticCurveTo(4, -sw.h * 1.25, 22, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // 尘土与碎石
+        for (const d of v.dust) {
+          ctx.globalAlpha = clamp(d.life / d.maxLife, 0, 1);
+          ctx.fillStyle = d.color;
+          ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        for (const d of v.debris) {
+          ctx.save();
+          ctx.globalAlpha = clamp(d.life / d.maxLife, 0, 1);
+          ctx.translate(d.x, d.y);
+          ctx.rotate(d.rot);
+          ctx.fillStyle = d.color;
+          ctx.fillRect(-d.size * 0.5, -d.size * 0.5, d.size, d.size * 0.75);
+          ctx.restore();
+        }
+
+        // 冲击光圈
+        for (const r of v.rings) {
+          const t = 1 - r.life / r.maxLife;
+          const rad = lerp(r.r0, r.r1, Easing.easeOutCubic(t));
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.strokeStyle = r.color;
+          ctx.globalAlpha = 1 - t;
+          ctx.lineWidth = Math.max(0.6, r.w0 * (1 - t));
+          ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+        }
+
+        // 火花
+        for (const s of v.sparks) {
+          const a = clamp(s.life / s.maxLife, 0, 1);
+          const ang = Math.atan2(s.vy, s.vx);
+          ctx.save();
+          ctx.strokeStyle = s.color;
+          ctx.globalAlpha = a;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(s.x - Math.cos(ang) * s.len, s.y - Math.sin(ang) * s.len);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 伤害 / 回血 / 弹反数字
+        for (const n of v.dmgNums) {
+          const a = clamp((n.life / n.maxLife) * 1.4, 0, 1);
+          ctx.save();
+          ctx.globalAlpha = a;
+          ctx.font = (n.isHeavy || n.isParry) ? '900 22px ui-monospace, monospace' : '800 15px ui-monospace, monospace';
+          ctx.textAlign = 'center';
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#0f172a';
+          ctx.strokeText(n.text, n.x, n.y);
+          ctx.fillStyle = n.isParry ? '#67e8f9' : (n.isHeal ? '#86efac' : (n.isHeavy ? '#fde047' : '#fef3c7'));
+          ctx.fillText(n.text, n.x, n.y);
+          ctx.restore();
+        }
+
+        // 散落阶段的金币光点（世界坐标）
+        for (const o of state.orbs) {
+          if (o.phase === 'fly') continue;
+          const g = ctx.createRadialGradient(o.wx, o.wy, 1, o.wx, o.wy, 11);
+          g.addColorStop(0, '#ffffff');
+          g.addColorStop(0.45, '#fde047');
+          g.addColorStop(1, 'rgba(250, 204, 21, 0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(o.wx, o.wy, 11, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      function drawScreenHudAndEffects() {
+        const p = state.player;
+
+        // 1. 飞行阶段的金币光点（屏幕坐标）
+        for (const o of state.orbs) {
+          if (o.phase !== 'fly') continue;
+          if (!Number.isFinite(o.scrX) || !Number.isFinite(o.scrY)) continue;
+          if (o.trail && o.trail.length >= 2) {
+            ctx.save();
+            ctx.lineCap = 'round';
+            for (let t = 1; t < o.trail.length; t++) {
+              const frac = t / (o.trail.length - 1);
+              ctx.strokeStyle = `rgba(253, 224, 71, ${frac * 0.78})`;
+              ctx.lineWidth = 5.5 * frac;
+              ctx.beginPath();
+              ctx.moveTo(o.trail[t - 1].x, o.trail[t - 1].y);
+              ctx.lineTo(o.trail[t].x, o.trail[t].y);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+          const g = ctx.createRadialGradient(o.scrX, o.scrY, 1, o.scrX, o.scrY, 12);
+          g.addColorStop(0, '#ffffff');
+          g.addColorStop(0.45, '#fde047');
+          g.addColorStop(1, 'rgba(250, 204, 21, 0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(o.scrX, o.scrY, 12, 0, Math.PI * 2); ctx.fill();
+        }
+
+        // 2. 低血量（<25）暗红脉动暗角 & 受击红闪
+        if ((p.hp > 0 && p.hp < 25) || p.hurtFlash > 0) {
+          const pulse = p.hp < 25 ? (0.28 + 0.18 * Math.sin(state.elapsed * 7.5)) : 0;
+          const hitA = p.hurtFlash > 0 ? (p.hurtFlash / 0.28) * 0.36 : 0;
+          const alpha = Math.min(0.65, Math.max(pulse, hitA));
+          const vg = ctx.createRadialGradient(VIEW_W * 0.5, VIEW_H * 0.5, VIEW_H * 0.28, VIEW_W * 0.5, VIEW_H * 0.5, VIEW_W * 0.65);
+          vg.addColorStop(0, 'rgba(185, 28, 28, 0)');
+          vg.addColorStop(1, `rgba(185, 28, 28, ${alpha})`);
+          ctx.fillStyle = vg;
+          ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        }
+
+        // 3. 左上角复古鎏金 HUD（血条 + 金币 + 冲刺状态）
+        const shakeX = p.hpShake > 0 ? Math.sin(state.elapsed * 90) * 4 : 0;
+        ctx.save();
+        ctx.translate(16 + shakeX, 14);
+        // 血条底板
+        ctx.fillStyle = 'rgba(8, 18, 24, 0.82)';
+        ctx.strokeStyle = 'rgba(223, 192, 136, 0.72)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(0, 0, 224, 24, 7); ctx.fill(); ctx.stroke();
+
+        // 白条残血 + 绯红真血
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(6, 5, 212 * clamp(p.whiteHp / p.maxHp, 0, 1), 14);
+        const hg = ctx.createLinearGradient(6, 0, 218, 0);
+        hg.addColorStop(0, '#9f1239'); hg.addColorStop(1, '#f43f5e');
+        ctx.fillStyle = hg;
+        ctx.fillRect(6, 5, 212 * clamp(p.hp / p.maxHp, 0, 1), 14);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '800 11px ui-monospace, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`HP ${Math.ceil(p.hp)} / ${p.maxHp}`, 112, 16);
+
+        // 金币胶囊
+        const gScale = 1 + (state.goldPulse / 0.16) * 0.18;
+        ctx.save();
+        ctx.translate(0, 32);
+        ctx.scale(gScale, gScale);
+        ctx.fillStyle = 'rgba(8, 18, 24, 0.82)';
+        ctx.strokeStyle = state.goldPulse > 0 ? '#fde047' : 'rgba(223, 192, 136, 0.65)';
+        ctx.beginPath(); ctx.roundRect(0, 0, 108, 26, 8); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath(); ctx.arc(18, 13, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#92400e'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = '#fef08a';
+        ctx.font = '800 13px ui-monospace, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${state.gold}`, 33, 18);
+        ctx.restore();
+
+        // 冲刺冷却与连段提示
+        ctx.fillStyle = 'rgba(8, 18, 24, 0.78)';
+        ctx.strokeStyle = p.dashCd <= 0 ? 'rgba(103, 232, 249, 0.6)' : 'rgba(148, 163, 184, 0.3)';
+        ctx.beginPath(); ctx.roundRect(116, 32, 108, 26, 8); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = p.dashCd <= 0 ? '#67e8f9' : '#94a3b8';
+        ctx.font = '700 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.dashCd <= 0 ? '冲刺就绪' : `冲刺 ${p.dashCd.toFixed(1)}s`, 170, 49);
+        ctx.restore();
+
+        // 4. 区域名称指示
+        const zoneName = p.x < 1760 ? '区域 1 · 遗迹入口' : (p.x < 3040 ? '区域 2 · 断桥跳台' : (p.x < 5450 ? '区域 3 · 密林长廊' : '区域 4 · 钟楼祭坛'));
+        ctx.save();
+        ctx.fillStyle = 'rgba(8, 18, 24, 0.72)';
+        ctx.strokeStyle = 'rgba(223, 192, 136, 0.45)';
+        ctx.beginPath(); ctx.roundRect(VIEW_W - 166, 14, 150, 26, 8); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#e6c687';
+        ctx.font = '700 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(zoneName, VIEW_W - 91, 31);
+        ctx.restore();
+
+        // 5. Boss 专属血条
+        const b = state.boss;
+        if (b && b.active && !b.dead) {
+          const bw = 460;
+          const bx = (VIEW_W - bw) * 0.5 + (b.hpShake > 0 ? Math.sin(state.elapsed * 95) * 4 : 0);
+          const by = VIEW_H - 46;
+          ctx.save();
+          ctx.fillStyle = 'rgba(8, 16, 22, 0.88)';
+          ctx.strokeStyle = b.phase === 2 ? '#fde047' : 'rgba(223, 192, 136, 0.75)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath(); ctx.roundRect(bx - 6, by - 22, bw + 12, 42, 10); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = b.phase === 2 ? '#fef08a' : '#e6c687';
+          ctx.font = '800 12px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(b.phase === 2 ? '朽钟守林巨像 · 二阶段共鸣' : '朽钟守林巨像', bx + 2, by - 6);
+          ctx.textAlign = 'right';
+          ctx.fillText(`${Math.ceil(b.hp)} / ${b.maxHp}`, bx + bw - 2, by - 6);
+
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(bx, by, bw, 12);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(bx, by, bw * clamp(b.whiteHp / b.maxHp, 0, 1), 12);
+          ctx.fillStyle = b.phase === 2 ? '#f59e0b' : '#dc2626';
+          ctx.fillRect(bx, by, bw * clamp(b.hp / b.maxHp, 0, 1), 12);
+          ctx.restore();
+        }
+
+        // 6. 坠落沟壑瞬黑遮罩
+        if (state.pitFade > 0) {
+          ctx.fillStyle = `rgba(0, 0, 0, ${clamp(state.pitFade / 0.35, 0, 1) * 0.88})`;
+          ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        }
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+        drawBackground();
+
+        ctx.save();
+        ctx.translate(-Math.round(state.camera.x) + state.camera.shakeX, state.camera.shakeY);
+        drawTerrainAndGates();
+        drawProps();
+        drawEnemiesAndBoss();
+        drawAfterimages();
+        const p = state.player;
+        const blink = p.hurtInvuln > 0 && Math.floor(state.elapsed * 20) % 2 === 0;
+        drawPlayerSprite(p, blink ? 0.45 : 1);
+        drawVfxWorld();
+        ctx.restore();
+
+        drawScreenHudAndEffects();
+      }
+
+      /* ============================================================
+         10. 事件绑定与启动主循环
+         ============================================================ */
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+        if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+        if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+        if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
+        if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'KeyK') {
+          if (!keys.jumpHeld) triggerJump();
+          keys.jumpHeld = true;
+        }
+        if (e.code === 'KeyJ' && !e.repeat) triggerAttack();
+        if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyL') && !e.repeat) triggerDash();
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+        if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+        if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
+        if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'KeyK') keys.jumpHeld = false;
+      });
+
+      window.addEventListener('blur', () => {
+        keys.left = keys.right = keys.down = keys.jumpHeld = false;
+      });
+
+      canvas.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        if (e.button === 0) triggerAttack();
+        if (e.button === 2) triggerDash();
+      });
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      // 工具栏按钮
+      document.getElementById('btnSound').addEventListener('click', (e) => {
+        AudioSys.enabled = !AudioSys.enabled;
+        e.currentTarget.textContent = AudioSys.enabled ? '🔊 音效：开' : '🔇 音效：关';
+        if (AudioSys.enabled) AudioSys.unlock();
+      });
+
+      document.getElementById('btnAssets').addEventListener('click', () => {
+        const panel = document.getElementById('assetPanel');
+        panel.classList.toggle('open');
+        if (panel.classList.contains('open')) AssetManager.renderGrid();
+      });
+
+      document.getElementById('btnBossWarp').addEventListener('click', warpToBossCorridor);
+      document.getElementById('btnRestart').addEventListener('click', () => buildLevel(true));
+
+      document.getElementById('btnModalPrimary').addEventListener('click', () => {
+        if (state.mode === 'dead') respawnAtCheckpoint();
+        else buildLevel(true);
+      });
+      document.getElementById('btnModalBoss').addEventListener('click', warpToBossCorridor);
+
+      // 素材工坊控件
+      document.querySelectorAll('.asset-tab').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.asset-tab').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          AssetManager.activeTab = btn.dataset.tab;
+          AssetManager.renderGrid();
+        });
+      });
+
+      document.getElementById('optAutoKey').addEventListener('change', (e) => {
+        AssetManager.autoKey = e.target.checked;
+        AssetManager.rebuildAll();
+      });
+
+      document.getElementById('optTolerance').addEventListener('input', (e) => {
+        AssetManager.tolerance = Number(e.target.value);
+        document.getElementById('optTolVal').textContent = e.target.value;
+      });
+      document.getElementById('optTolerance').addEventListener('change', () => AssetManager.rebuildAll());
+
+      document.getElementById('optGrid').addEventListener('change', (e) => {
+        AssetManager.grid = e.target.value;
+        AssetManager.rebuildAll();
+      });
+      document.getElementById('btnClearAllAssets').addEventListener('click', () => AssetManager.clearAll());
+
+      // 移动端触控
+      function bindHold(id, prop) {
+        const el = document.getElementById(id);
+        const on = (e) => { e.preventDefault(); keys[prop] = true; };
+        const off = (e) => { e.preventDefault(); keys[prop] = false; };
+        el.addEventListener('touchstart', on, { passive: false });
+        el.addEventListener('touchend', off, { passive: false });
+        el.addEventListener('touchcancel', off, { passive: false });
+      }
+      bindHold('tLeft', 'left');
+      bindHold('tRight', 'right');
+      bindHold('tDown', 'down');
+      document.getElementById('tJump').addEventListener('touchstart', (e) => { e.preventDefault(); keys.jumpHeld = true; triggerJump(); }, { passive: false });
+      document.getElementById('tJump').addEventListener('touchend', (e) => { e.preventDefault(); keys.jumpHeld = false; }, { passive: false });
+      document.getElementById('tDash').addEventListener('touchstart', (e) => { e.preventDefault(); triggerDash(); }, { passive: false });
+      document.getElementById('tAtk').addEventListener('touchstart', (e) => { e.preventDefault(); triggerAttack(); }, { passive: false });
+
+      // 启动游戏
+      let lastTime = 0;
+      function loop(ts) {
+        if (!lastTime) lastTime = ts;
+        const rawDt = Math.min(0.05, Math.max(0.001, (ts - lastTime) / 1000));
+        lastTime = ts;
+        updateGame(rawDt);
+        render();
+        requestAnimationFrame(loop);
+      }
+
+      window.onload = () => {
+        buildLevel(true);
+        AssetManager.renderGrid();
+        requestAnimationFrame(loop);
+      };
+    })();
+  </script>
+</body>
+</html>
